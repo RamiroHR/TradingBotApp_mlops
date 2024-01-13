@@ -2,6 +2,7 @@ TradingBotApp_mlops Version 1.0.0
 ==============================
 
 Trading Bot App as MLOps project
+Arnaud
 
 Project Organization
 ------------
