@@ -26,10 +26,17 @@ api = FastAPI(
 #################################################################################
 
 
-security = HTTPBasic()
+### Set up connection to users/admins database
+
+from src.data.make_all_users_database import create_all_users_database
+create_all_users_database()
 
 users_db = dbm.get_registered_users()
 admins_db = dbm.get_admin_users()
+
+
+### Define verification functions:
+security = HTTPBasic()
 
 def verify_user(credentials: HTTPBasicCredentials = Depends(security)):
     username = credentials.username
