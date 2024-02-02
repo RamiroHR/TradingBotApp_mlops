@@ -57,3 +57,23 @@ Project Organization
 --------
 
 <p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p>
+
+
+# Installation
+
+Create a new environment from the requirements.txt file.  
+
+* ```pip install virtualenv```  (if you don't already have virtualenv installed)
+* ```virtualenv env``` to create the new environment called 'env' within the project directory ('env' is in .gitignore such there is no issues when synchronizing with GitHub) 
+* ```source env/bin/activate``` or ```source env/Scripts/activate``` to activate the virtual environment.
+* ```pip install -r requirements.txt``` to install the requirements in the current environment
+
+
+# Launch the API
+Run the following command in a terminal  
+```
+uvicorn main:api --reload
+```
+
+Then you can query the API at the browser going to the OpenAPI url 'http://localhost:8000/docs'
+
