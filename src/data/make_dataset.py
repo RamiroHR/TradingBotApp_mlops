@@ -28,7 +28,7 @@ class getData:
         self.endDate=self.setDate(year=2023, month=1, day=1, hour=2, min=0) if end_date=='' else end_date # set the default end date
 
         # setup the path to record the data
-        self.file_path="./"
+        self.update_file_path("./")
 
         # setup the api call
         self.base_url = "https://api4.binance.com"
@@ -38,6 +38,16 @@ class getData:
         self.columns_name = ['openT',
            'open', 'high', 'low', 'close', 'baseVol', 'closeT','quoteVol','nbTrade',
            'takerBaseVol', 'takerQuoteVol', '0']
+
+    def update_file_path(self, file_path):
+        self.file_path=os.path.abspath(file_path) # convert the directory into an absolute directory in order to avoid potential bugs during deployments
+        # Check if the folder exists
+        if not os.path.exists(self.file_path):
+            # If it doesn't exist, create it
+            os.makedirs(self.file_path)
+            print(f"Directory '{self.file_path}' created successfully.")
+        else:
+            print(f"Directory '{self.file_path}' already exists.")
 
     def setDate(self, year=2023, month=1, day=1, hour=0, min=0):
         """
@@ -143,9 +153,8 @@ class getData:
         return data.sort_values(by='openT').drop_duplicates().reset_index(drop=True)
 
 
-
 @click.command()
-@click.argument('raw_data_filepath', type=click.Path(exists=True))
+@click.argument('raw_data_filepath', type=click.Path())
 #@click.argument('output_filepath', type=click.Path())
 @click.option('--pair', default='BTCUSDT', help='Specify a trading pair (default: BTCUSDT).')
 @click.option('--interval', default='1d', help='Specify a trading pair (default: BTCUSDT).')
@@ -165,7 +174,7 @@ def main(raw_data_filepath, pair, interval):
     }
 
     get_data = getData(**params)
-    get_data.file_path = raw_data_filepath
+    get_data.update_file_path(raw_data_filepath)
     get_data.getKlines()
 
     logger.info('making final data set from raw data')
@@ -183,3 +192,5 @@ if __name__ == '__main__':
     load_dotenv(find_dotenv())
 
     main()
+
+    
