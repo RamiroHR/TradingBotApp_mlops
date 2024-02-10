@@ -2,6 +2,9 @@ from fastapi import FastAPI, Depends, HTTPException, status, Query
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel
 from enum import Enum
+from src.data.make_dataset import getData
+from datetime import datetime, timezone
+import time
 
 import database_management_tools as dbm
 
@@ -66,14 +69,14 @@ def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
 #### [ ] Define Public Methods
 #################################################################################
 
+#### [ ] /app_status
 @api.get('/app_status', name = 'Quick test if the API is running',
                     tags = ['Public'])
 async def get_app_status():
     return {'status' : 'App is available'}
 
 
-
-
+#### [ ] /sign_up
 class User(BaseModel):
     username: str
     password: str
@@ -96,19 +99,24 @@ async def post_new_user(user: User):
      
 
 
+#### [ ] /price_hist
+
 # Predefined 'assets' present in the database.
 allowed_assets = ['BTCUSDT', 'ETHUSDT']
 Asset = Enum('Assets', {item: item for item in allowed_assets}, type = str)
 
+# Predefined 'intervals' present in the database.
+allowed_interval = ['4h', '1d', '1w']
+Intervals = Enum('Assets', {item: item for item in allowed_interval}, type = str)
+
 @api.get('/price_hist', name = 'Fetch Asset Price History',
-                    description = 'Display asset specific data over a selected period of time.',
+                    description = 'Fetch asset specific data over a selected period of time and record it.',
                     tags = ['Public'])
 async def get_price_hist(
     asset: Asset,
-    start_date: str = Query(
-        title="Select starting date JJ/MM/YYY"),
-    end_date: str = Query(
-        title="Select end date JJ/MM/YYY. Must be after the start date")    
+    interval: Intervals
+    # start_date: str = Query(None, description="Select earliest date JJ/MM/YYY. Default : 01/07/2017 (Binance launch)."),
+    # end_date: str = Query(None, description="Select end date JJ/MM/YYY. Must be after the start date")
     ):
     
     """
@@ -116,9 +124,33 @@ async def get_price_hist(
     [ ] verify end date > start date.
     [ ] Import statique data from asset database (predefined with the binance API)
     """
-    
-    return {'asset': asset,
-            'start_date': start_date}
+
+    # set the parameters
+    params = {
+        'pair': asset,
+        'interval': interval,
+        'pitch': 1000,
+        'start_date': int(datetime(year=2017, month=7, day=1, hour=0, minute=0, tzinfo=timezone.utc).timestamp()*1000), # default: start date in july 2017 (Binance launch)
+        'end_date': int(time.time()*1000) # default: actual time to get the up to date data
+    }
+
+    get_data = getData(**params)
+    get_data.update_file_path("data/raw")
+    data = get_data.getKlines()
+
+    # get the first date of the dataset
+    first_date = data.iloc[0].openT
+    first_date = datetime.fromtimestamp(first_date/1000)
+    first_date = first_date.strftime("%d/%m/%Y %H:%M:%S")
+
+    # get the last date of the dataset
+    last_date = data.iloc[-1].closeT
+    last_date = datetime.fromtimestamp(last_date/1000)
+    last_date = last_date.strftime("%d/%m/%Y %H:%M:%S")
+
+    return {'asset': asset, 
+            'first_open_date': first_date, 
+            'last_close_date': last_date}
     
 
 
@@ -143,3 +175,4 @@ async def verify_user_route(username: str = Depends(verify_user)):
 #################################################################################
 #### [ ] Define Admins Methods
 #################################################################################
+
