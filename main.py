@@ -1,11 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Query
+from fastapi import FastAPI, Depends, HTTPException, status, Query, Form
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, validator, ValidationError
 from enum import Enum
 from src.data.make_dataset import getData
 from datetime import datetime, timezone
 import time
-
+import json
 import database_management_tools as dbm
 
 ## instantiate the api and define the tags meatadata & security protocol
@@ -22,6 +22,9 @@ api = FastAPI(
     version = '1.0.0',
     openapi_tags = tags_metadata
 )
+
+raw_data_path = "data/raw"
+models_path = "models"
 
 
 #################################################################################
@@ -135,7 +138,7 @@ async def get_price_hist(
     }
 
     get_data = getData(**params)
-    get_data.update_file_path("data/raw")
+    get_data.update_file_path(raw_data_path)
     data = get_data.getKlines()
 
     # get the first date of the dataset
@@ -172,7 +175,183 @@ async def verify_user_route(username: str = Depends(verify_user)):
 
 
 
+#### [ ] Get the model parameters
+@api.get('/prediction', name = 'Get prediction',
+                         description = 'Get the prediction with the actual data',
+                         tags = ['Users'])
+async def get_prediction(
+                    asset: Asset,
+                    interval: Intervals,
+                    model_name: str = 'model_test',
+                    username: str = Depends(verify_user)):
+    """
+    Returns confirmation is login protocol is succesfull
+    """
+    
+    # read the dataset
+    open_csv = openFile(raw_data_path, asset, interval)
+    df = open_csv.data
+
+    # preprocessing
+    length=7
+    factor=10
+
+    # get the features
+    X_transform = getFeatures(length, factor)
+    X = X_transform.fit_transform(df.close)
+
+    tm = tdbotModel(models_path, model_name)
+    response = "BUY" if tm.get_prediction(X.iloc[-1:])==1 else "WAIT"
+    
+    return response
+
+
 #################################################################################
 #### [ ] Define Admins Methods
 #################################################################################
 
+
+from src.models.train_model import tdbotModel
+from src.data.read_dataset import openFile
+from src.features.build_features import getFeatures, getTarget
+
+def check_params(params):
+    # function to update the input data if incorrect
+    params_checked = {}
+    params_checked['n_neighbors'] = params.n_neighbors if (type(params.n_neighbors)==int and params.n_neighbors<36) else 30
+    params_checked['weights'] = params.weights if params.weights in ['uniform', 'distance'] else 'uniform'
+    return params_checked
+
+#### [ ] Get the model parameters
+@api.get('/get_model_params', name = 'Get model\'s parameters',
+                         description = 'Verify the parameters actually in use for our model',
+                         tags = ['Admins'])
+async def get_model_params(model_name: str = 'model_test',
+                           username: str = Depends(verify_user)):
+    """
+    Returns the parameters of the model
+    """
+
+    tm = tdbotModel(models_path)
+    response = tm.get_params(model_name)
+    
+    return response
+
+
+#### [ ] Update the model parameters
+class Params(BaseModel):
+    n_neighbors: int = Field(default=30)
+    weights: str = Field(default="uniform")
+
+@api.put('/update_model_params', name = 'Update model\'s parameters',
+                         description = 'Update the parameters to be used in use for our model',
+                         tags = ['Admins'])
+async def update_model_params(params: Params,
+                              username: str = Depends(verify_user),
+                              model_name: str = 'model_test'
+                       ):
+    """
+    Update the parameters of the model and return the actual parameters
+    """
+
+    tm = tdbotModel(models_path, model_name)
+
+    response = {}
+    response['model_name'] = model_name
+    response['previous_parameters'] = tm.get_params()
+    response['response'] = tm.update_params(check_params(params))
+    response['new_parameters'] = tm.get_params()
+
+    return response
+
+
+#### [ ] assess a model 
+@api.post('/assess_performance', name = 'Assess a model',
+                         description = 'Assess the performance of a parameters\' set with a cross-validation',
+                         tags = ['Admins'])
+async def assess_performance(
+                    asset: Asset,
+                    interval: Intervals,
+                    params: Params,
+                    username: str = Depends(verify_user)
+                    ):
+    """
+    Returns the parameters of the model
+    """
+
+    # read the dataset
+    open_csv = openFile(raw_data_path, asset, interval)
+    df = open_csv.data
+
+    # preprocessing
+    features_params={}
+    features_params['length']=7
+    features_params['factor']=10
+
+    # get the features
+    X_transform = getFeatures(features_params['length'], features_params['factor'])
+    X = X_transform.fit_transform(df.close)
+
+    # get the target
+    y_transform = getTarget(features_params['length'])
+    y = y_transform.fit_transform(df.close)
+
+    # open a instance of tdbotModel
+    tm = tdbotModel(models_path, 'assess')
+    
+    params=check_params(params)
+    accs = tm.assess_model(X, y, params)
+
+    response={}
+    #response['model_name'] = model_name
+    response['features_parameters'] = features_params
+    response['model_parameters'] = params
+    response['accuracy_list'] = str(accs)
+    response['accuracy_mean'] = accs.mean()
+    response['accuracy_std'] = accs.std()
+    
+    return response
+
+
+#### [ ] train the model 
+@api.put('/train_model', name = 'Train the model',
+                         description = 'Train the model with the recorded parameters',
+                         tags = ['Admins'])
+async def train_model(
+                    asset: Asset,
+                    interval: Intervals,
+                    model_name: str = 'model_test',
+                    username: str = Depends(verify_user)
+                    ):
+    """
+    Returns the parameters of the model
+    """
+
+    # read the dataset
+    open_csv = openFile(raw_data_path, asset, interval)
+    df = open_csv.data
+
+    # preprocessing
+    length=7
+    factor=10
+
+    # get the features
+    X_transform = getFeatures(length, factor)
+    X = X_transform.fit_transform(df.close)
+
+    # get the target
+    y_transform = getTarget(length)
+    y = y_transform.fit_transform(df.close)
+
+    # open a instance of tdbotModel
+    tm = tdbotModel(models_path, model_name)
+    training_response, model, acc = tm.train_model(X_, y_)
+    
+    # create the response to return
+    response={}
+    response['model_name'] = model_name
+    response['training_response'] = training_response
+    response['recording_response'] = tm.save_model(model)
+    response['accuracy'] = acc
+    
+    return response
