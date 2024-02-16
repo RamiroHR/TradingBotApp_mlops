@@ -104,7 +104,7 @@ class tdbotModel:
             filename = self.model_name+'.joblib'
             file_path=os.path.join(self.model_path,filename)
             joblib.dump(model, file_path)
-            return "Model recoded"
+            return "Model recorded"
         except:
             return "Error with tdbotModel.save_model. Model not recorded."
     
@@ -113,7 +113,7 @@ class tdbotModel:
             filename = self.model_name+'.joblib'
             file_path=os.path.join(self.model_path,filename)
             joblib.dump(model, file_path)
-            return "Model recoded"
+            return "Model recorded"
         except:
             return "Error with tdbotModel.save_model. Model not recorded."
 

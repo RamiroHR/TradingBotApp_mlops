@@ -177,7 +177,7 @@ async def verify_user_route(username: str = Depends(verify_user)):
 
 #### [ ] Get the model parameters
 @api.get('/prediction', name = 'Get prediction',
-                         description = 'Get the prediction with the actual data',
+                         description = 'Get the prediction with the actual data. Return "BUY" or "WAIT".',
                          tags = ['Users'])
 async def get_prediction(
                     asset: Asset,
@@ -223,17 +223,17 @@ def check_params(params):
     return params_checked
 
 #### [ ] Get the model parameters
-@api.get('/get_model_params', name = 'Get model\'s parameters',
-                         description = 'Verify the parameters actually in use for our model',
+@api.get('/get_model_params', name = "Get the parameters of a model",
+                         description = 'Verify the parameters actually in use for a given model (using the model_name as an ID)',
                          tags = ['Admins'])
 async def get_model_params(model_name: str = 'model_test',
-                           username: str = Depends(verify_user)):
+                           username: str = Depends(verify_admin)):
     """
     Returns the parameters of the model
     """
 
-    tm = tdbotModel(models_path)
-    response = tm.get_params(model_name)
+    tm = tdbotModel(models_path, model_name)
+    response = tm.get_params()
     
     return response
 
@@ -243,11 +243,11 @@ class Params(BaseModel):
     n_neighbors: int = Field(default=30)
     weights: str = Field(default="uniform")
 
-@api.put('/update_model_params', name = 'Update model\'s parameters',
-                         description = 'Update the parameters to be used in use for our model',
+@api.put('/update_model_params', name = "Create or Update the parameters of a model",
+                         description = 'Create or Update the parameters for a model',
                          tags = ['Admins'])
 async def update_model_params(params: Params,
-                              username: str = Depends(verify_user),
+                              username: str = Depends(verify_admin),
                               model_name: str = 'model_test'
                        ):
     """
@@ -266,14 +266,14 @@ async def update_model_params(params: Params,
 
 
 #### [ ] assess a model 
-@api.post('/assess_performance', name = 'Assess a model',
-                         description = 'Assess the performance of a parameters\' set with a cross-validation',
+@api.post('/assess_performance', name = 'Assess the performance of a model',
+                         description = "Assess the performance of a parameters' set with a cross-validation. This endpoint does not record any file.",
                          tags = ['Admins'])
 async def assess_performance(
                     asset: Asset,
                     interval: Intervals,
                     params: Params,
-                    username: str = Depends(verify_user)
+                    username: str = Depends(verify_admin)
                     ):
     """
     Returns the parameters of the model
@@ -315,13 +315,13 @@ async def assess_performance(
 
 #### [ ] train the model 
 @api.put('/train_model', name = 'Train the model',
-                         description = 'Train the model with the recorded parameters',
+                         description = 'Train the model and save it.',
                          tags = ['Admins'])
 async def train_model(
                     asset: Asset,
                     interval: Intervals,
                     model_name: str = 'model_test',
-                    username: str = Depends(verify_user)
+                    username: str = Depends(verify_admin)
                     ):
     """
     Returns the parameters of the model
@@ -345,7 +345,7 @@ async def train_model(
 
     # open a instance of tdbotModel
     tm = tdbotModel(models_path, model_name)
-    training_response, model, acc = tm.train_model(X_, y_)
+    training_response, model, acc = tm.train_model(X, y)
     
     # create the response to return
     response={}
