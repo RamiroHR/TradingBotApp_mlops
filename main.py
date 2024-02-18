@@ -5,7 +5,7 @@ from enum import Enum
 
 # import sys
 # sys.path.append('/src')
-# from src.data.make_dataset import getData
+from src.data.make_dataset import getData
 
 from datetime import datetime, timezone
 import time
@@ -38,7 +38,7 @@ models_path = "models"
 
 # ### Set up connection to users/admins database
 
-# from src.data.make_all_users_database import create_all_users_database
+from src.data.make_all_users_database import create_all_users_database
 # create_all_users_database()
 
 # users_db = dbm.get_registered_users()
