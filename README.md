@@ -79,3 +79,25 @@ uvicorn main:api --reload
 
 Then you can query the API at the browser going to the OpenAPI url 'http://localhost:8000/docs'
 
+
+# Docker containerized API
+The essential steps to build the docker image and the run the containerized API are detailed in the docker_files/docker_setup.sh file.  
+The docker_setup.sh can be directly executed in a bash terminal from the project root folder.
+
+Otherwise the main commands can be manually executed in the terminal from the project root folder:  
+1. **build the images (specifying the Dockerfile location)**
+    ```
+    docker image build . -t ramirohr/tradingbot:5.0.0 -f docker_files/tradingbot_api/Dockerfile
+    ```
+2. **run docker container & link ports & mount volumes**  
+(only Winwods users should include the -W flag, otherwise remove it)  
+
+    ```
+    docker container run --name bot_api -p 8000:8000 -d \
+    --volume "$(pwd -W)/data:/data" \
+    --volume "$(pwd -W)/models:/models" \
+    --volume "$(pwd -W)/src:/src" \
+    ramirohr/tradingbot:5.0.0
+    ```
+3. **Query the containerized API**
+The containerized api is available at http://localhost:8000/docs
