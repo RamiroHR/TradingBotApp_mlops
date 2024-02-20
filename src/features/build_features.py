@@ -36,34 +36,36 @@ class getFeatures(BaseEstimator, TransformerMixin):
         return C_
     
 class getTarget(BaseEstimator, TransformerMixin):
-    def __init__(self, length, pct_threshold=0.05):
+    def __init__(self, ema_length, diff_length, pct_threshold=0.2, pct_threshold_activate=True):
         '''
         Custom transformer to get the target.
 
         Argument:
-        * length    :   period used to calculate the indicators
+        * ema_length    :   period used to calculate the exponential moving average
+        * diff_length   :   period used to calculate the pct_change in the future
+        * pct_threshold :   quantile to be considered for the '1' label
+        * pct_threshold_activate    :   True to return a binary 0/1 list
         '''
-        self.length=length
+        self.ema_length=ema_length
+        self.diff_length=diff_length
+        self.pct_threshold_activate = pct_threshold_activate
         self.pct_threshold = pct_threshold
 
     def fit(self, X, y=None):
         return self
     
     def transform(self, X, y=None):
-        length_lead = self.length
-        length_lag = self.length*2
-
         # calculate target
         C_=pd.DataFrame()
-        C_['ema'] = ta.ema(X, length=length_lead)
-        C_['target'] = C_['ema'].pct_change(-length_lag) # if <0, price is likely to pump - if >0, price is likely to dump
+        C_['ema'] = ta.ema(X, length=self.ema_length)
+        C_['target'] = C_['ema'].pct_change(-self.diff_length) # if <0, price is likely to pump - if >0, price is likely to dump
 
         # create the target
         y_ = C_['target']
-        y_=y_.apply(lambda x: 1 if x<-self.pct_threshold else 0)
+        if self.pct_threshold_activate:
+            threshold = y_.quantile(self.pct_threshold) # define the quantile which will be used for the 1 threshold
+            y_=y_.apply(lambda x: 1 if x<threshold else 0)
 
-        return y_
+        return y_, threshold
 
-
-# CREATE PREPROCESSING FUNCTION
 
