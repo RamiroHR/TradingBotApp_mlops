@@ -19,7 +19,7 @@ tags_metadata = [
 
 api = FastAPI(
     title = "Trading Bot App",
-    description = "Enhance profits and manage risks with AI assited investment strategies.",
+    description = "Enhance profits and manage risks with AI assisted investment strategies.",
     version = '1.0.0',
     openapi_tags = tags_metadata
 )
