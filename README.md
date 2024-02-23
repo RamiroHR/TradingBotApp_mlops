@@ -71,6 +71,12 @@ Create a new environment from the requirements.txt file.
 * ```pip install -r requirements.txt``` to install the requirements in the current environment
 
 
+# Run Notebooks
+1. To run the notebook within the activated vitual environment 'env' setup the jupyter kernel: `python -m ipykernel install --user --name=env`  
+2. Then launch jupyter notebook and select a notebook: `jupyter notebook`  
+3. In the menu under the notebook name select _**kernel**_ > _**change kernel**_ > _**env**_
+
+
 # Launch the API
 Run the following command in a terminal  
 ```
