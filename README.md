@@ -91,10 +91,13 @@ The essential steps to build the docker image and the run the containerized API 
 The docker_setup.sh can be directly executed in a bash terminal from the project root folder.
 
 Otherwise the main commands can be manually executed in the terminal from the project root folder:  
-1. **build the images (specifying the Dockerfile location)**
+1. **Get the Docker image** 
+The Docker image can be found at the DockerHub as **ramirohr/tradingbot:1.0.2**, ready to pull.  
+Otherwise build the image locally (specifying the Dockerfile location)
     ```
-    docker image build . -t ramirohr/tradingbot:5.0.0 -f docker_files/tradingbot_api/Dockerfile
+    docker image build . -t ramirohr/tradingbot:1.0.2 -f docker_files/tradingbot_api/Dockerfile
     ```
+
 2. **run docker container & link ports & mount volumes**  
 (only Winwods users should include the -W flag, otherwise remove it)  
 
@@ -103,7 +106,7 @@ Otherwise the main commands can be manually executed in the terminal from the pr
     --volume "$(pwd -W)/data:/data" \
     --volume "$(pwd -W)/models:/models" \
     --volume "$(pwd -W)/src:/src" \
-    ramirohr/tradingbot:5.0.0
+    ramirohr/tradingbot:1.0.2
     ```
 3. **Query the containerized API**
 The containerized api is available at http://localhost:8000/docs
