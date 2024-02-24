@@ -184,7 +184,7 @@ Then you can query the API at the browser going to the OpenAPI url 'http://local
 Follow the steps below to swiftly utilize your initial model:
 
 1. `/price_hist` : get the price up to date
-2. `/update_model_params` : create and record the parameter for your model
+2. `/update_model_params` : create and record the parameters for your model
 3. `/train_model` : train and record the model
 4. `/prediction` : predict
 
@@ -200,7 +200,7 @@ The features are composed of four (4) momemtum indicators:
 * Moving Average Convergence Divergence (MACD)
 
 ## Target engineering
-The target is a binary value (0 or 1) calculated based on the relative change between the exponential moving average on a given day (D) and the price after a certain number of days (x).
+The target is a binary value (0 or 1) calculated from the exponential moving average (EMA). It involves determining the relative change between the EMA value on a specific day (D) and the EMA value after a certain number of days (D+x). A threshold is then applied to define the ratio of 1.
 The exponential moving average is used to smooth daily prices and reduce noise in the price serie.
 
 ## The parameters
