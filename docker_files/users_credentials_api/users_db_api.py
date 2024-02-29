@@ -141,3 +141,35 @@ def verify_user_credentials(credentials: HTTPBasicCredentials = Depends(security
 @server.get("/verify-user")
 async def verify_user_endpoint(credentials: HTTPBasicCredentials = Depends(verify_user_credentials)):
     return {"message": "User verified"}
+
+
+
+###############################################################
+################  Microservice: verify admins  ################
+
+# Verify admin function
+def verify_admin_credentials(credentials: HTTPBasicCredentials = Depends(security)):
+
+    # admin credentials to verify
+    username = credentials.username
+    password = credentials.password
+
+    # Connect to MongoDB and check credentials
+    with MongoClient(uri) as client:
+        db = client.api_login_credentials
+        collection = db.admins
+        user = collection.find_one({"username": username, "password": password})
+
+        if not user:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid credentials",
+                headers={"WWW-Authenticate": "Basic"},
+            )
+
+    return username
+
+# Expose an endpoint to verify user credentials
+@server.get("/verify-admin")
+async def verify_admin_endpoint(credentials: HTTPBasicCredentials = Depends(verify_admin_credentials)):
+    return {"message": "Admin user verified"}

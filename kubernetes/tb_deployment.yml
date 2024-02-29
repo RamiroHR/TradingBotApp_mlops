@@ -34,18 +34,18 @@ spec:
 
         ## Router api container:
         - name: cont-router-api
-          image: ramirohr/tradingbot:1.0.5
+          image: ramirohr/tradingbot:1.0.6
           ports:
             - containerPort: 8000
 
       #     ## define volume mount points
-      #     volumeMounts:
+          # volumeMounts:
       #       - name: data-volume
       #         mountPath: /data
       #       - name: models-volume
       #         mountPath: /models
-      #       - name: src-volume
-      #         mountPath: /src
+            # - name: src-volume
+            #   mountPath: /src
 
       # ## mount volumes
       # volumes:
@@ -55,6 +55,6 @@ spec:
       #   - name: models-volume
       #     hostPath:
       #       path: "C:/Ramiro/Data Science/0_DataScientest/04_MLOps_project/TradingBotApp_mlops/models"  # path to models directory on the host
-      #   - name: src-volume
-      #     hostPath:
-      #       path: "C:/Ramiro/Data Science/0_DataScientest/04_MLOps_project/TradingBotApp_mlops/src"     # Path to source code directory on the host
+        # - name: src-volume
+        #   hostPath:
+        #     path: "C:\\Ramiro\\Data\ Science\\0_DataScientest\\04_MLOps_project\\TradingBotApp_mlops\\src"     # Path to source code directory on the host

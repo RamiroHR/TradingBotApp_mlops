@@ -17,6 +17,6 @@ spec:
       targetPort: 7000   # Target port for the FastAPI container
 
     - name: fastapi-svc-port
-      port: 8002
+      port: 8000
       protocol: TCP
       targetPort: 8000   # Target port for the second FastAPI container
