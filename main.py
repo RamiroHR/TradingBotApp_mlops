@@ -281,35 +281,35 @@ async def verify_user_route(username: str = Depends(verify_user)):
     return response
 
 
-# ##========================== Get model predictions ==========================###
-# @api.get('/prediction', name = 'Get prediction',
-#                          description = 'Get the prediction with the actual data. Return "BUY" or "WAIT".',
-#                          tags = ['Users'])
-# async def get_prediction(
-#                     asset: Asset,
-#                     interval: Intervals,
-#                     model_name: str = 'model_test',
-#                     username: str = Depends(verify_user)):
-#     """
-#     Returns confirmation if login protocol is succesfull
-#     """
+##========================== Get model predictions ==========================###
+@api.get('/prediction', name = 'Get prediction',
+                         description = 'Get the prediction with the actual data. Return "BUY" or "WAIT".',
+                         tags = ['Users'])
+async def get_prediction(
+                    asset: Asset,
+                    interval: Intervals,
+                    model_name: str = 'model_test',
+                    username: str = Depends(verify_user)):
+    """
+    Returns confirmation if login protocol is succesfull
+    """
     
-#     # read the dataset
-#     open_csv = openFile(raw_data_path, asset, interval)
-#     df = open_csv.data
+    # read the dataset
+    open_csv = openFile(raw_data_path, asset, interval)
+    df = open_csv.data
 
-#     # preprocessing
-#     length=7
-#     factor=10
+    # preprocessing
+    length=7
+    factor=10
 
-#     # get the features
-#     X_transform = getFeatures(length, factor)
-#     X = X_transform.fit_transform(df.close)
+    # get the features
+    X_transform = getFeatures(length, factor)
+    X = X_transform.fit_transform(df.close)
 
-#     tm = tdbotModel(models_path, model_name)
-#     response = "BUY" if tm.get_prediction(X.iloc[-1:])==1 else "WAIT"
+    tm = tdbotModel(models_path, model_name)
+    response = "BUY" if tm.get_prediction(X.iloc[-1:])==1 else "WAIT"
     
-#     return response
+    return response
 
 
 
@@ -372,7 +372,7 @@ async def get_model_params(model_name: str = 'model_test',
     return response
 
 
-#======================== Update the model parameters ========================###
+##======================== Update the model parameters ========================###
 @api.put('/update_model_params', name = "Create or Update the parameters of a model",
                          description = 'Create or Update the parameters for a model',
                          tags = ['Admins'])
@@ -396,175 +396,178 @@ async def update_model_params(params: Params,
     response = {}
     response['model_name'] = model_name
     response['previous_parameters'] = tm.get_params()
-    #response['response'] = tm.update_params(pp_params)
     response['response'] = tm.update_params(pp_params)
     response['new_parameters'] = tm.get_params()
 
     return response
 
 
-# #### [ ] assess a model 
-# @api.post('/assess_ml_performance', name = 'Assess the accuracy of a model',
-#                          description = "Assess the accuracy of a parameters' set with a cross-validation. This endpoint does not record any file.",
-#                          tags = ['Admins'])
-# async def assess_ml_performance(
-#                     asset: Asset,
-#                     interval: Intervals,
-#                     params: Params,
-#                     username: str = Depends(verify_admin)
-#                     ):
-#     """
-#     Returns the parameters of the model
-#     """
+##============================= assess a model  =============================###
+@api.post('/assess_ml_performance', name = 'Assess the accuracy of a model',
+                         description = "Assess the accuracy of a parameters' set with a cross-validation. This endpoint does not record any file.",
+                         tags = ['Admins'])
+async def assess_ml_performance(
+                    asset: Asset,
+                    interval: Intervals,
+                    params: Params,
+                    username: str = Depends(verify_admin)
+                    ):
+    """
+    Returns the parameters of the model
+    """
 
-#     # read the dataset
-#     open_csv = openFile(raw_data_path, asset, interval)
-#     df = open_csv.data
+    # read the dataset
+    open_csv = openFile(raw_data_path, asset, interval)
+    df = open_csv.data
 
-#     # preprocessing
-#     features_params=get_params_features_eng(params)
+    # preprocessing
+    features_params=get_params_features_eng(params)
 
-#     # get the features
-#     X_transform = getFeatures(features_params['features_length'], features_params['features_factor'])
-#     X = X_transform.fit_transform(df.close)
+    # get the features
+    X_transform = getFeatures(features_params['features_length'], features_params['features_factor'])
+    X = X_transform.fit_transform(df.close)
 
-#     # get the target (float)
-#     y_transform = getTarget(features_params['target_ema_length'], features_params['target_diff_length'], features_params['target_pct_threshold'], True)
-#     y, threshold = y_transform.fit_transform(df.close)
+    # get the target (float)
+    y_transform = getTarget(features_params['target_ema_length'], features_params['target_diff_length'], features_params['target_pct_threshold'], True)
+    y, threshold = y_transform.fit_transform(df.close)
 
-#     # dataset info
-#     input_info = {}
-#     input_info['dataset_len'] = X.shape[0]
-#     input_info['nb_features'] = X.shape[1]
-#     input_info['target_0'] = len(y[y==0])
-#     input_info['target_1'] = len(y[y==1])
-#     input_info['target_1_threshold'] = threshold
+    # dataset info
+    input_info = {}
+    input_info['dataset_len'] = X.shape[0]
+    input_info['nb_features'] = X.shape[1]
+    input_info['target_0'] = len(y[y==0])
+    input_info['target_1'] = len(y[y==1])
+    input_info['target_1_threshold'] = threshold
 
-#     # open a instance of tdbotModel
-#     tm = tdbotModel(models_path, 'assess')
+    # open a instance of tdbotModel
+    tm = tdbotModel(models_path, 'assess')
     
-#     # get all the parameters in the relevant format
-#     params_model=get_params_model(params)
-#     params_cv=get_params_cv(params)
+    # get all the parameters in the relevant format
+    params_model=get_params_model(params)
+    params_cv=get_params_cv(params)
 
-#     # assess model
-#     accs = tm.assess_model_ml_perf(X, y, params_model, params_cv)
+    # assess model
+    accs = tm.assess_model_ml_perf(X, y, params_model, params_cv)
 
-#     response={}
-#     response['dataset_info'] = input_info
-#     response['features_parameters'] = features_params
-#     response['model_parameters'] = params_model
-#     response['cv_parameters'] = params_cv
-#     response['accuracy_list'] = list(accs)
-#     response['accuracy_mean'] = accs.mean()
-#     response['accuracy_std'] = accs.std()
+    response={}
+    response['dataset_info'] = input_info
+    response['features_parameters'] = features_params
+    response['model_parameters'] = params_model
+    response['cv_parameters'] = params_cv
+    response['accuracy_list'] = list(accs)
+    response['accuracy_mean'] = accs.mean()
+    response['accuracy_std'] = accs.std()
     
-#     return response
+    return response
 
 
-# #### [ ] assess a model - with financial indicator
-# @api.post('/assess_financial_performance', name = 'Assess the financial performance of a model',
-#                          description = "Assess the financial performance of a parameters' set with a cross-validation. This endpoint does not record any file.",
-#                          tags = ['Admins'])
-# async def assess_financial_performance(
-#                     asset: Asset,
-#                     interval: Intervals,
-#                     params: Params,
-#                     username: str = Depends(verify_admin)
-#                     ):
-#     """
-#     Returns the results of the assessment
-#     """
 
-#     # read the dataset
-#     open_csv = openFile(raw_data_path, asset, interval)
-#     df = open_csv.data
+##==================== assess a model / with financial indicator ==================###
+@api.post('/assess_financial_performance', name = 'Assess the financial performance of a model',
+                         description = "Assess the financial performance of a parameters' set with a cross-validation. This endpoint does not record any file.",
+                         tags = ['Admins'])
+async def assess_financial_performance(
+                    asset: Asset,
+                    interval: Intervals,
+                    params: Params,
+                    username: str = Depends(verify_admin)
+                    ):
+    """
+    Returns the results of the assessment
+    """
 
-#     # preprocessing
-#     features_params=get_params_features_eng(params)
+    # read the dataset
+    open_csv = openFile(raw_data_path, asset, interval)
+    df = open_csv.data
 
-#     # get the features
-#     X_transform = getFeatures(features_params['features_length'], features_params['features_factor'])
-#     X = X_transform.fit_transform(df.close)
+    # preprocessing
+    features_params=get_params_features_eng(params)
 
-#     # get the target (float)
-#     y_transform = getTarget(features_params['target_ema_length'], features_params['target_diff_length'], features_params['target_pct_threshold'], True)
-#     y, threshold = y_transform.fit_transform(df.close)
+    # get the features
+    X_transform = getFeatures(features_params['features_length'], features_params['features_factor'])
+    X = X_transform.fit_transform(df.close)
 
-#     # dataset info
-#     input_info = {}
-#     input_info['dataset_len'] = X.shape[0]
-#     input_info['nb_features'] = X.shape[1]
-#     input_info['target_0'] = len(y[y==0])
-#     input_info['target_1'] = len(y[y==1])
-#     input_info['target_1_threshold'] = threshold
+    # get the target (float)
+    y_transform = getTarget(features_params['target_ema_length'], features_params['target_diff_length'], features_params['target_pct_threshold'], True)
+    y, threshold = y_transform.fit_transform(df.close)
 
-#     # open a instance of tdbotModel
-#     tm = tdbotModel(models_path, 'assess')
+    # dataset info
+    input_info = {}
+    input_info['dataset_len'] = X.shape[0]
+    input_info['nb_features'] = X.shape[1]
+    input_info['target_0'] = len(y[y==0])
+    input_info['target_1'] = len(y[y==1])
+    input_info['target_1_threshold'] = threshold
+
+    # open a instance of tdbotModel
+    tm = tdbotModel(models_path, 'assess')
     
-#     # get all the parameters in the relevant format
-#     params_model=get_params_model(params)
-#     params_cv=get_params_cv(params)
+    # get all the parameters in the relevant format
+    params_model=get_params_model(params)
+    params_cv=get_params_cv(params)
 
-#     # assess model
-#     scores = tm.assess_model_finance_perf(X, y, params_model, params_cv, df.close)
+    # assess model
+    scores = tm.assess_model_finance_perf(X, y, params_model, params_cv, df.close)
 
-#     response={}
-#     response['dataset_info'] = input_info
-#     response['features_parameters'] = features_params
-#     response['model_parameters'] = params_model
-#     response['cv_parameters'] = params_cv
-#     response['scores'] = scores
+    response={}
+    response['dataset_info'] = input_info
+    response['features_parameters'] = features_params
+    response['model_parameters'] = params_model
+    response['cv_parameters'] = params_cv
+    response['scores'] = scores
     
-#     return response
+    return response
 
-# #### [ ] train the model 
-# @api.put('/train_model', name = 'Train the model',
-#                          description = 'Train the model and save it.',
-#                          tags = ['Admins'])
-# async def train_model(
-#                     asset: Asset,
-#                     interval: Intervals,
-#                     model_name: str = 'model_test',
-#                     username: str = Depends(verify_admin)
-#                     ):
-#     """
-#     Returns the parameters of the model
-#     """
 
-#     # read the dataset
-#     open_csv = openFile(raw_data_path, asset, interval)
-#     df = open_csv.data
 
-#     # open a instance of tdbotModel
-#     tm = tdbotModel(models_path, model_name)
+##=========================== train the model =========================###
 
-#     # read the params
-#     params = tm.get_params()
+@api.put('/train_model', name = 'Train the model',
+                         description = 'Train the model and save it.',
+                         tags = ['Admins'])
+async def train_model(
+                    asset: Asset,
+                    interval: Intervals,
+                    model_name: str = 'model_test',
+                    username: str = Depends(verify_admin)
+                    ):
+    """
+    Returns the parameters of the model
+    """
 
-#     if params==False:
-#         response = "No existing parameters for this model. Use /update_model_params to create the parameters."
-#     else:
-#         # preprocessing
-#         features_params=params['params_features_eng']
+    # read the dataset
+    open_csv = openFile(raw_data_path, asset, interval)
+    df = open_csv.data
 
-#         # get the features
-#         X_transform = getFeatures(features_params['features_length'], features_params['features_factor'])
-#         X = X_transform.fit_transform(df.close)
+    # open a instance of tdbotModel
+    tm = tdbotModel(models_path, model_name)
 
-#         # get the target (float)
-#         y_transform = getTarget(features_params['target_ema_length'], features_params['target_diff_length'], features_params['target_pct_threshold'], True)
-#         y, threshold = y_transform.fit_transform(df.close)
+    # read the params
+    params = tm.get_params()
 
-#         # train the model
-#         training_response, model, acc, entry_score = tm.train_model(X, y, df.close)
+    if params==False:
+        response = "No existing parameters for this model. Use /update_model_params to create the parameters."
+    else:
+        # preprocessing
+        features_params=params['params_features_eng']
+
+        # get the features
+        X_transform = getFeatures(features_params['features_length'], features_params['features_factor'])
+        X = X_transform.fit_transform(df.close)
+
+        # get the target (float)
+        y_transform = getTarget(features_params['target_ema_length'], features_params['target_diff_length'], features_params['target_pct_threshold'], True)
+        y, threshold = y_transform.fit_transform(df.close)
+
+        # train the model
+        training_response, model, acc, entry_score = tm.train_model(X, y, df.close)
         
-#         # create the response to return
-#         response={}
-#         response['model_name'] = model_name
-#         response['training_response'] = training_response
-#         response['recording_response'] = tm.save_model(model)
-#         response['entry_score'] = entry_score
-#         response['accuracy'] = acc
+        # create the response to return
+        response={}
+        response['model_name'] = model_name
+        response['training_response'] = training_response
+        response['recording_response'] = tm.save_model(model)
+        response['entry_score'] = entry_score
+        response['accuracy'] = acc
     
-#     return response
+    return response

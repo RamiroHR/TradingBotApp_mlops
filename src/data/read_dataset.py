@@ -26,17 +26,17 @@ class openFile:
         self.interval = interval
         self.data = self.open_csv()
 
+##>>>
+    # def open_csv(self):
+    #     filename = self.asset+"-"+self.interval+"-raw.csv"
+    #     file_path = os.path.join(self.data_path, filename)
+    #     df = pd.read_csv(os.path.abspath(file_path))
+    #     df['datetime']=pd.to_datetime(df["openT"], utc=True, unit="ms")
+    #     df.set_index(pd.DatetimeIndex(df["datetime"]), inplace=True)
+    #     return df
+
 
     def open_csv(self):
-        filename = self.asset+"-"+self.interval+"-raw.csv"
-        file_path = os.path.join(self.data_path, filename)
-        df = pd.read_csv(os.path.abspath(file_path))
-        df['datetime']=pd.to_datetime(df["openT"], utc=True, unit="ms")
-        df.set_index(pd.DatetimeIndex(df["datetime"]), inplace=True)
-        return df
-
-#>>>
-    def pull_db(self):
         coll_name = self.asset+"-"+self.interval+"-raw"
         
         with MongoClient(uri) as Mclient:
@@ -50,4 +50,4 @@ class openFile:
         df['datetime']=pd.to_datetime(df["openT"], utc=True, unit="ms")
         df.set_index(pd.DatetimeIndex(df["datetime"]), inplace=True)
         return df
-#<<<
+##<<<

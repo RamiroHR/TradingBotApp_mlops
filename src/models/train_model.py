@@ -9,8 +9,12 @@ from sklearn.metrics import accuracy_score
 import joblib
 import json
 
+
+
 #>>>
 from pymongo import MongoClient
+import bson.binary
+from io import BytesIO
 
 # Replace these values with your MongoDB credentials and container details
 USERNAME = 'tradingbot_admin'
@@ -72,7 +76,8 @@ class tdbotModel:
             model_params = collection.find_one({"model_name": self.model_name})
 
         if model_params is None:
-            return self.model_name + " not found in Database"
+            # return self.model_name + " not found in Database"
+            return False
         else: 
             # Convert ObjectId to string if necessary
             model_params["_id"] = str(model_params["_id"])
@@ -99,7 +104,6 @@ class tdbotModel:
         file_name=self.model_name+'_params.json'
         file_path = os.path.join(self.model_path, file_name)
         
-        
         with MongoClient(uri) as Mclient:
             db = Mclient.models            
             collection = db['model_params']
@@ -107,15 +111,21 @@ class tdbotModel:
             previous_params = collection.find_one({"model_name": self.model_name})
 
             # Define the filter to find the document by its "name"
-            filter = {"model_name": "model_test"}
+            filter = {"model_name": self.model_name}
 
             # Define the new values you want to update
-            new_values = {"$set": params["params_model"]}  # Update the values as needed
+            # new_values = {"$set": params["params_model"]}  # Update the values as needed
+            new_values = {"$set": params}  # Update the values as needed
 
             # Update the document
-            collection.update_one(filter, new_values)
+            result = collection.update_one(filter, new_values, upsert=True)
         
-            return "Parameters updated"
+            if result.modified_count > 0:
+                return "Parameters updated"
+            elif result.upserted_id is not None:
+                return "Parameters inserted"
+            else:
+                return "No changes made"
 ##<<<
 
 
@@ -243,31 +253,88 @@ class tdbotModel:
         else:
             # if there are no parameter, return False
             return "Error. Missing parameters.", None, None, None
-    
+
+##>>>    
+    # def save_model(self, model):
+    #     try:
+    #         filename = self.model_name+'.joblib'
+    #         file_path=os.path.join(self.model_path,filename)
+    #         joblib.dump(model, file_path)
+    #         return "Model recorded"
+    #     except:
+    #         return "Error with tdbotModel.save_model. Model not recorded."
     def save_model(self, model):
         try:
             filename = self.model_name+'.joblib'
             file_path=os.path.join(self.model_path,filename)
-            joblib.dump(model, file_path)
+            #joblib.dump(model, file_path)
+        
+            with MongoClient(uri) as Mclient:
+                db = Mclient.models            
+                collection = db['trained_models']
+                
+                # Serialize the model to a binary format
+                with open(file_path, 'wb') as f:
+                    joblib.dump(model, f)
+
+                # Read the serialized model bytes
+                with open(file_path, 'rb') as f:
+                    model_bytes = bson.binary.Binary(f.read())
+                
+                # Data to insert
+                doc = {"model_name": self.model_name, "model": model_bytes}
+
+                # Insert the model bytes into the collection
+                collection.insert_one(doc)
             return "Model recorded"
+        
         except:
             return "Error with tdbotModel.save_model. Model not recorded."
-    
+##<<<
+
+##>>>
+    # def load_model(self):
+    #     try:
+    #         filename = self.model_name+'.joblib'
+    #         file_path=os.path.join(self.model_path,filename)
+    #         joblib.dump(model, file_path)
+    #         return "Model recorded"
+    #     except:
+    #         return "Error with tdbotModel.save_model. Model not recorded."
     def load_model(self):
         try:
-            filename = self.model_name+'.joblib'
-            file_path=os.path.join(self.model_path,filename)
-            joblib.dump(model, file_path)
-            return "Model recorded"
+            # filename = self.model_name+'.joblib'
+            # file_path=os.path.join(self.model_path,filename)
+            # joblib.dump(model, file_path)
+            with MongoClient(uri) as Mclient:
+                db = Mclient.models            
+                collection = db['trained_models']
+                doc = collection.find_one({"model_name": self.model_name})
+
+                model_bytes = doc["model"]
+                
+                # Create a BytesIO object to store the binary data, then load to correctly handle utf-encoding
+                model_buffer = BytesIO(model_bytes)
+                model = joblib.load(model_buffer)        
+            return {"Model_recovered": model}
+
         except:
-            return "Error with tdbotModel.save_model. Model not recorded."
+            return "Error with tdbotModel.load_model. Model not recovered."
+##<<<        
 
+
+##>>>
+    # def get_prediction(self, X):
+    #     filename = self.model_name+'.joblib'
+    #     file_path=os.path.join(self.model_path,filename)
+    #     model = joblib.load(file_path)
+    #     return model.predict(X)[-1]
     def get_prediction(self, X):
-        filename = self.model_name+'.joblib'
-        file_path=os.path.join(self.model_path,filename)
-        model = joblib.load(file_path)
+        # filename = self.model_name+'.joblib'
+        # file_path=os.path.join(self.model_path,filename)
+        model = self.load_model()["Model_recovered"]
         return model.predict(X)[-1]
-
+##<<<
 
     # create a function to assess the financial performance
     def get_entry_score(self, y_pred, price_serie):
