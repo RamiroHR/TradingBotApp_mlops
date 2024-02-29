@@ -1,0 +1,11 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-tb
+
+spec:
+  defaultBackend:
+    service:
+      name: service-tb
+      port:
+        number: 8000  #service port to bypass with ingress
