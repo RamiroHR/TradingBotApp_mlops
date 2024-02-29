@@ -368,39 +368,41 @@ async def get_model_params(model_name: str = 'model_test',
     """
 
     tm = tdbotModel(models_path, model_name)
-    response = tm.get_params()
+#>>>
+    # response = tm.get_params()
+    response = tm.get_params_from_DB()
+#<<<    
     return response
 
 
-#======================== Update the model parameters ========================###
-@api.put('/update_model_params', name = "Create or Update the parameters of a model",
-                         description = 'Create or Update the parameters for a model',
-                         tags = ['Admins'])
-async def update_model_params(params: Params,
-                              username: str = Depends(verify_admin),
-                              model_name: str = 'model_test'
-                       ):
-    """
-    Update the parameters of the model and return the actual parameters
-    """
+##======================== Update the model parameters ========================###
+# @api.put('/update_model_params', name = "Create or Update the parameters of a model",
+#                          description = 'Create or Update the parameters for a model',
+#                          tags = ['Admins'])
+# async def update_model_params(params: Params,
+#                               username: str = Depends(verify_admin),
+#                               model_name: str = 'model_test'
+#                        ):
+#     """
+#     Update the parameters of the model and return the actual parameters
+#     """
 
-    # post-process params
-    pp_params = {
-        "params_features_eng": get_params_features_eng(params),
-        "params_model": get_params_model(params),
-        "params_cv": get_params_cv(params)
-    }
-    print(pp_params)
-    tm = tdbotModel(models_path, model_name)
+#     # post-process params
+#     pp_params = {
+#         "params_features_eng": get_params_features_eng(params),
+#         "params_model": get_params_model(params),
+#         "params_cv": get_params_cv(params)
+#     }
+#     print(pp_params)
+#     tm = tdbotModel(models_path, model_name)
     
-    response = {}
-    response['model_name'] = model_name
-    response['previous_parameters'] = tm.get_params()
-    #response['response'] = tm.update_params(pp_params)
-    response['response'] = tm.update_params(pp_params)
-    response['new_parameters'] = tm.get_params()
+#     response = {}
+#     response['model_name'] = model_name
+#     response['previous_parameters'] = tm.get_params()
+#     response['response'] = tm.update_params(pp_params)
+#     response['new_parameters'] = tm.get_params()
 
-    return response
+#     return response
 
 
 # #### [ ] assess a model 

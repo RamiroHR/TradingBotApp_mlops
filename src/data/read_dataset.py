@@ -2,6 +2,23 @@
 import os
 import pandas as pd
 
+#>>>
+from pymongo import MongoClient
+
+# Replace these values with your MongoDB credentials and container details
+USERNAME = 'tradingbot_admin'
+PASSWORD = 'tradingbot_pass' #os.environ.get('DB_ADMIN_PASS')  #'tradingbot_pass'
+CLUSTERNAME = 'tb-cluster-0'
+
+# Connection URI
+connection_uri = "mongodb+srv://{username}:{password}@{cluster_name}.ztadynx.mongodb.net/?retryWrites=true&w=majority"
+uri = connection_uri.format(
+    username=USERNAME,
+    password=PASSWORD,
+    cluster_name=CLUSTERNAME
+)
+#<<<
+
 class openFile:
     def __init__(self, data_path, asset, interval):
         self.data_path=os.path.abspath(data_path)
@@ -17,3 +34,20 @@ class openFile:
         df['datetime']=pd.to_datetime(df["openT"], utc=True, unit="ms")
         df.set_index(pd.DatetimeIndex(df["datetime"]), inplace=True)
         return df
+
+#>>>
+    def pull_db(self):
+        coll_name = self.asset+"-"+self.interval+"-raw"
+        
+        with MongoClient(uri) as Mclient:
+            db = Mclient.asset_price_hist            
+            collection = db[coll_name]
+            cursor = collection.find()
+                
+            df = pd.DataFrame(list(cursor))
+        
+        df.drop(columns=['_id'], inplace=True)
+        df['datetime']=pd.to_datetime(df["openT"], utc=True, unit="ms")
+        df.set_index(pd.DatetimeIndex(df["datetime"]), inplace=True)
+        return df
+#<<<
