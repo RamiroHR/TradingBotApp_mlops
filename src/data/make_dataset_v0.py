@@ -12,23 +12,6 @@ from datetime import datetime, timezone
 import os
 from binance.spot import Spot # pip install binance-connector-python
 
-#>>>
-from pymongo import MongoClient
-
-# Replace these values with your MongoDB credentials and container details
-USERNAME = 'tradingbot_admin'
-PASSWORD = 'tradingbot_pass' #os.environ.get('DB_ADMIN_PASS')  #'tradingbot_pass'
-CLUSTERNAME = 'tb-cluster-0'
-
-# Connection URI
-connection_uri = "mongodb+srv://{username}:{password}@{cluster_name}.ztadynx.mongodb.net/?retryWrites=true&w=majority"
-uri = connection_uri.format(
-    username=USERNAME,
-    password=PASSWORD,
-    cluster_name=CLUSTERNAME
-)
-#<<<
-
 class getData:
     """
     get the data from binance on a specific pair
@@ -44,10 +27,9 @@ class getData:
         self.startDate=self.setDate(year=2023, month=1, day=1, hour=0, min=0) if start_date=='' else start_date # set the default start date
         self.endDate=self.setDate(year=2023, month=1, day=1, hour=2, min=0) if end_date=='' else end_date # set the default end date
 
-#>>>
-        # # setup the path to record the data
-        # self.update_file_path("./")
-#<<<
+        # setup the path to record the data
+        self.update_file_path("./")
+
         # setup the api call
         self.base_url = "https://api4.binance.com"
         self.client=Spot(self.base_url)
@@ -57,17 +39,15 @@ class getData:
            'open', 'high', 'low', 'close', 'baseVol', 'closeT','quoteVol','nbTrade',
            'takerBaseVol', 'takerQuoteVol', '0']
 
-#>>>
-    # def update_file_path(self, file_path):
-    #     self.file_path=os.path.abspath(file_path) # convert the directory into an absolute directory in order to avoid potential bugs during deployments
-    #     # Check if the folder exists
-    #     if not os.path.exists(self.file_path):
-    #         # If it doesn't exist, create it
-    #         os.makedirs(self.file_path)
-    #         print(f"Directory '{self.file_path}' created successfully.")
-    #     else:
-    #         print(f"Directory '{self.file_path}' already exists.")
-#<<<
+    def update_file_path(self, file_path):
+        self.file_path=os.path.abspath(file_path) # convert the directory into an absolute directory in order to avoid potential bugs during deployments
+        # Check if the folder exists
+        if not os.path.exists(self.file_path):
+            # If it doesn't exist, create it
+            os.makedirs(self.file_path)
+            print(f"Directory '{self.file_path}' created successfully.")
+        else:
+            print(f"Directory '{self.file_path}' already exists.")
 
     def setDate(self, year=2023, month=1, day=1, hour=0, min=0):
         """
@@ -108,44 +88,19 @@ class getData:
         It will get the data from a defined folder. If some historical data exists, it will update the data. If not, it will scrap the bull historical.
         """
 
-
         # create the file name
         file_name = self.pair+'-'+self.interval+'-raw.csv' if file_name=='' else file_name
-#>>>        
-        # if os.path.isfile(os.path.join(self.file_path, file_name)):
-        #     # if the file already exists, open it
-        #     df_temp = pd.read_csv(os.path.join(self.file_path, file_name))
+        
+        if os.path.isfile(os.path.join(self.file_path, file_name)):
+            # if the file already exists, open it
+            df_temp = pd.read_csv(os.path.join(self.file_path, file_name))
 
-        #     # take the last entry as a start date for the update
-        #     self.startDate = df_temp.iloc[-1,0]
-        #     print('Data will be updated stating from the following timestamp (ms) : ', self.startDate, ' (index:', df_temp.index[-1],')')
-        # else:
-        #     df_temp = None
-        #     print('There is no file to update')
-#<<<
-
-#>>>
-        # create the collection name (without the '.csv' name part)
-        coll_name = self.pair+'-'+self.interval+'-raw' if file_name=='' else file_name[:-4]
-
-        with MongoClient(uri) as Mclient:
-            db = Mclient.asset_price_hist            
-            
-            if coll_name in db.list_collection_names():
-                # if collection file already exists, pull it
-                collection = db[coll_name]
-                cursor = collection.find()
-                
-                df_temp = pd.DataFrame(list(cursor))
-                
-                # take the last entry as a start date for the update
-                self.startDate = df_temp.iloc[-1,0]
-                print('Data will be updated stating from the following timestamp (ms) : ', self.startDate, ' (index:', df_temp.index[-1],')')
-            else:
-                df_temp = None
-                print('There is no file to update')
-#<<<
-
+            # take the last entry as a start date for the update
+            self.startDate = df_temp.iloc[-1,0]
+            print('Data will be updated stating from the following timestamp (ms) : ', self.startDate, ' (index:', df_temp.index[-1],')')
+        else:
+            df_temp = None
+            print('There is no file to update')
 
         # get the klines
         df = self.updateKlines()
@@ -157,26 +112,10 @@ class getData:
         # clean the data
         df = self.cleanKlines(df)
 
-#>>>
-        # # export to csv
-        # df.to_csv(os.path.join(self.file_path, file_name), index=False)
-        # print('Data updated')
-#<<<
-
-#>>>
-        ## >>>>>>>>>>  export to MongoDB  <<<<<<<<<<<<<<< 
-        data = df.to_dict(orient='records')
-        
-        with MongoClient(uri) as Mclient:
-            db = Mclient.asset_price_hist
-            collection = db[coll_name]
-            # collection.drop()
-            collection.insert_many(data)
+        # export to csv
+        df.to_csv(os.path.join(self.file_path, file_name), index=False)
         print('Data updated')
-        ## >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-#<<<
         return df
-    
 
     def updateKlines(self):
         """
