@@ -30,146 +30,50 @@ raw_data_path = "data/raw"
 models_path = "models"
 
 
-#################################################################################
-#### Login protocols 
-#################################################################################
+#####################################################################################
+######################### Login Protocols w/ Local Database #########################
+#####################################################################################
 
 
-### Set up connection to users/admins database
+## Set up connection to users/admins database
 
-# from src.data.make_all_users_database import create_all_users_database
-# create_all_users_database()
+from src.data.make_all_users_database import create_all_users_database
+create_all_users_database()
 
-# users_db = dbm.get_registered_users()
-# admins_db = dbm.get_admin_users()
+users_db = dbm.get_registered_users()
+admins_db = dbm.get_admin_users()
 
-
-# ### Define verification functions:
-# security = HTTPBasic()
-
-# def verify_user(credentials: HTTPBasicCredentials = Depends(security)):
-#     username = credentials.username
-    
-#     if not(users_db.get(username)) or not(credentials.password == users_db[username]['password']):        raise HTTPException(
-#             status_code=status.HTTP_401_UNAUTHORIZED,
-#             detail="Incorrect user credentials",
-#             headers={"WWW-Authenticate": "Basic"},
-#         )
-#     return username
-
-
-# def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
-#     username = credentials.username
-
-#     if not(admins_db.get(username)) or not(credentials.password == admins_db[username]['password']):
-#         raise HTTPException(
-#             status_code=status.HTTP_401_UNAUTHORIZED,
-#             detail="Incorrect admin credentials",
-#             headers={"WWW-Authenticate": "Basic"},
-#         )
-#     return username
-
-
-######################################################################################
-########################### test microservice architecture ###########################
-######################### -- detach verification process -- ##########################
-######################################################################################
-
-import requests 
 
 ### Define verification functions:
 security = HTTPBasic()
 
 def verify_user(credentials: HTTPBasicCredentials = Depends(security)):
     username = credentials.username
-
-    # Make a request to the userdatabase API to verify the user credentials
-    url = 'http://localhost:8001/verify-user'  # as defined by the deployment& & service
-    # url = 'http://service-tb:8001/verify-user'  # as defined by the deployment& & service
     
-    response = requests.get(url, auth=(username, credentials.password))
-    
-    if response.status_code != 200:
-        raise HTTPException(
+    if not(users_db.get(username)) or not(credentials.password == users_db[username]['password']):        raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect user credentials",
             headers={"WWW-Authenticate": "Basic"},
         )
-    
     return username
 
 
 def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
     username = credentials.username
 
-    # Make a request to the userdatabase API to verify the user credentials
-    url = 'http://localhost:8001/verify-admin'  # as defined by the deployment& & service
-    # url = 'http://service-tb:8001/verify-admin'  # as defined by the deployment& & service
-    
-    response = requests.get(url, auth=(username, credentials.password))
-    
-    if response.status_code != 200:
+    if not(admins_db.get(username)) or not(credentials.password == admins_db[username]['password']):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect user credentials",
+            detail="Incorrect admin credentials",
             headers={"WWW-Authenticate": "Basic"},
         )
-    
     return username
 
 
-######################################################################################
-############################# test connection to MongoDB #############################
-######################### -- Add only some basic endpoints -- ########################
-######################################################################################
-
-from pymongo import MongoClient
-
-# Replace these values with your MongoDB credentials and container details
-USERNAME = 'tradingbot_admin'
-PASSWORD = 'tradingbot_pass' #os.environ.get('DB_ADMIN_PASS')  #'tradingbot_pass'
-CLUSTERNAME = 'tb-cluster-0'
-
-# Connection URI
-connection_uri = "mongodb+srv://{username}:{password}@{cluster_name}.ztadynx.mongodb.net/?retryWrites=true&w=majority"
-uri = connection_uri.format(
-    username=USERNAME,
-    password=PASSWORD,
-    cluster_name=CLUSTERNAME
-)
-
-## test connection to the database
-@api.get('/test-db-connection')
-async def test_mysql_engine():
-    """
-    Test the correct creation of the MySQL engine with the recovered dtabase credentials
-    """
-    try:
-        client = MongoClient(uri)
-        client.admin.command('ping')
-        return {"status": "Pinged your deployment. You successfully connected to MongoDB Atlas!"}
-    except Exception as e:
-        # If there's an exception, display the error
-        return {"error": str(e)}
-
-
-## simple retrieve data
-@api.get("/usernames")
-async def get_usernames():
-    # Connect to MongoDB
-    with MongoClient(uri) as client:
-        # Access the database and collection
-        db = client.api_login_credentials
-        collection = db.users
-        
-        # Query MongoDB to retrieve all usernames
-        usernames = [user["username"] for user in collection.find()]  # Assuming username is a field in your collection
-
-        return usernames
 
 
 #################################################################################
-#### [ ] Define Public Methods
+########################## Define Public Methods ################################
 #################################################################################
 
 
@@ -189,28 +93,18 @@ class User(BaseModel):
                     description = 'Add new user to the users database.',
                     tags = ['Public'])
 async def post_new_user(user: User):
+    
     new_user = {
+        user.username: {
             "username": user.username,
             "password": user.password
             }
+    }
     
-    with MongoClient(uri) as client:
-        # Access the database and collection
-        db = client.api_login_credentials
-        collection = db.users
-        
-        # insert data in MongoDB 
-        collection.insert_one(new_user)
-
-        # verify user correctly added
-        added_user = collection.find_one({"username": user.username, "password": user.password})
-        
-        # if not added_user:
-        #     return { "Status": "New user coud not be added to the database. Try again."}
-        # else:
-        #     return { "New user added ": user} 
-
+    dbm.write_database(new_user)
+    
     return user
+
      
 
 ##========================== price_hist ==========================###
@@ -243,7 +137,7 @@ async def get_price_hist(
     }
 
     get_data = getData(**params)
-#>>>    get_data.update_file_path(raw_data_path)
+    get_data.update_file_path(raw_data_path)
     data = get_data.getKlines()
 
     # get the first date of the dataset
@@ -314,9 +208,9 @@ async def get_prediction(
 
 
 
-# #################################################################################
-# #### [x] Define Admins Methods
-# #################################################################################
+#################################################################################
+######################## Define Registered Admin Methods ########################
+#################################################################################
 
 
 from src.models.train_model import tdbotModel
@@ -368,11 +262,13 @@ async def get_model_params(model_name: str = 'model_test',
     """
 
     tm = tdbotModel(models_path, model_name)
+
     response = tm.get_params()
+        
     return response
 
 
-##======================== Update the model parameters ========================###
+#======================== Update the model parameters ========================###
 @api.put('/update_model_params', name = "Create or Update the parameters of a model",
                          description = 'Create or Update the parameters for a model',
                          tags = ['Admins'])
@@ -402,7 +298,7 @@ async def update_model_params(params: Params,
     return response
 
 
-##============================= assess a model  =============================###
+#### [ ] assess a model 
 @api.post('/assess_ml_performance', name = 'Assess the accuracy of a model',
                          description = "Assess the accuracy of a parameters' set with a cross-validation. This endpoint does not record any file.",
                          tags = ['Admins'])
@@ -461,8 +357,7 @@ async def assess_ml_performance(
     return response
 
 
-
-##==================== assess a model / with financial indicator ==================###
+#### [ ] assess a model - with financial indicator
 @api.post('/assess_financial_performance', name = 'Assess the financial performance of a model',
                          description = "Assess the financial performance of a parameters' set with a cross-validation. This endpoint does not record any file.",
                          tags = ['Admins'])
@@ -518,10 +413,7 @@ async def assess_financial_performance(
     
     return response
 
-
-
-##=========================== train the model =========================###
-
+#### [ ] train the model 
 @api.put('/train_model', name = 'Train the model',
                          description = 'Train the model and save it.',
                          tags = ['Admins'])
@@ -571,3 +463,5 @@ async def train_model(
         response['accuracy'] = acc
     
     return response
+
+

@@ -9,35 +9,13 @@ from sklearn.metrics import accuracy_score
 import joblib
 import json
 
-
-
-#>>>
-from pymongo import MongoClient
-import bson.binary
-from io import BytesIO
-
-# Replace these values with your MongoDB credentials and container details
-USERNAME = 'tradingbot_admin'
-PASSWORD = 'tradingbot_pass' #os.environ.get('DB_ADMIN_PASS')  #'tradingbot_pass'
-CLUSTERNAME = 'tb-cluster-0'
-
-# Connection URI
-connection_uri = "mongodb+srv://{username}:{password}@{cluster_name}.ztadynx.mongodb.net/?retryWrites=true&w=majority"
-uri = connection_uri.format(
-    username=USERNAME,
-    password=PASSWORD,
-    cluster_name=CLUSTERNAME
-)
-#<<<
-
 class tdbotModel:
     def __init__(self, path='', model_name='model_test'):
         
         self.test_size = 1000
         self.update_file_path(path)
         self.model_name=model_name
-
-
+    
     def update_file_path(self, file_path):
         self.model_path=os.path.abspath(file_path) # convert the directory into an absolute directory in order to avoid potential bugs during deployments
         # Check if the folder exists
@@ -47,55 +25,20 @@ class tdbotModel:
             print(f"Directory '{self.model_path}' created successfully.")
         else:
             print(f"Directory '{self.model_path}' already exists.")
-
-##>>>
-    # def get_params(self):
-    #     '''
-    #     Get the parameters for a model on the basis of its name
-    #     '''
-    #     file_name=self.model_name+'_params.json'
-    #     file_path = os.path.join(self.model_path, file_name)
-    #     print(file_path)
-    #     if os.path.isfile(file_path):
-    #         with open(file_path, 'r') as json_params:
-    #             print(json_params)
-    #             return json.load(json_params)
-    #     else:
-    #         return False
-
-
+    
     def get_params(self):
         '''
-        Get the parameters of a model on the basis of its name from mongoDB cluster database
+        Get the parameters for a model on the basis of its name
         '''
-                
-        with MongoClient(uri) as Mclient:
-            db = Mclient.models            
-            collection = db['model_params']
-
-            model_params = collection.find_one({"model_name": self.model_name})
-
-        if model_params is None:
-            # return self.model_name + " not found in Database"
+        file_name=self.model_name+'_params.json'
+        file_path = os.path.join(self.model_path, file_name)
+        print(file_path)
+        if os.path.isfile(file_path):
+            with open(file_path, 'r') as json_params:
+                print(json_params)
+                return json.load(json_params)
+        else:
             return False
-        else: 
-            # Convert ObjectId to string if necessary
-            model_params["_id"] = str(model_params["_id"])
-
-        return model_params
-#<<<
-
-
-##>>>
-    # def update_params(self, params):
-    #     '''
-    #     Update the parameters to be used for the model
-    #     '''
-    #     file_name=self.model_name+'_params.json'
-    #     file_path = os.path.join(self.model_path, file_name)
-    #     with open(file_path, 'w') as params_file:
-    #         params_file.write(json.dumps(params, indent=4))
-    #         return "Parameters updated"
 
     def update_params(self, params):
         '''
@@ -103,31 +46,9 @@ class tdbotModel:
         '''
         file_name=self.model_name+'_params.json'
         file_path = os.path.join(self.model_path, file_name)
-        
-        with MongoClient(uri) as Mclient:
-            db = Mclient.models            
-            collection = db['model_params']
-
-            previous_params = collection.find_one({"model_name": self.model_name})
-
-            # Define the filter to find the document by its "name"
-            filter = {"model_name": self.model_name}
-
-            # Define the new values you want to update
-            # new_values = {"$set": params["params_model"]}  # Update the values as needed
-            new_values = {"$set": params}  # Update the values as needed
-
-            # Update the document
-            result = collection.update_one(filter, new_values, upsert=True)
-        
-            if result.modified_count > 0:
-                return "Parameters updated"
-            elif result.upserted_id is not None:
-                return "Parameters inserted"
-            else:
-                return "No changes made"
-##<<<
-
+        with open(file_path, 'w') as params_file:
+            params_file.write(json.dumps(params, indent=4))
+            return "Parameters updated"
 
     def assess_model_ml_perf(self, X, y, params_model, param_cv):
 
@@ -253,88 +174,31 @@ class tdbotModel:
         else:
             # if there are no parameter, return False
             return "Error. Missing parameters.", None, None, None
-
-##>>>    
-    # def save_model(self, model):
-    #     try:
-    #         filename = self.model_name+'.joblib'
-    #         file_path=os.path.join(self.model_path,filename)
-    #         joblib.dump(model, file_path)
-    #         return "Model recorded"
-    #     except:
-    #         return "Error with tdbotModel.save_model. Model not recorded."
+    
     def save_model(self, model):
         try:
             filename = self.model_name+'.joblib'
             file_path=os.path.join(self.model_path,filename)
-            #joblib.dump(model, file_path)
-        
-            with MongoClient(uri) as Mclient:
-                db = Mclient.models            
-                collection = db['trained_models']
-                
-                # Serialize the model to a binary format
-                with open(file_path, 'wb') as f:
-                    joblib.dump(model, f)
-
-                # Read the serialized model bytes
-                with open(file_path, 'rb') as f:
-                    model_bytes = bson.binary.Binary(f.read())
-                
-                # Data to insert
-                doc = {"model_name": self.model_name, "model": model_bytes}
-
-                # Insert the model bytes into the collection
-                collection.insert_one(doc)
+            joblib.dump(model, file_path)
             return "Model recorded"
-        
         except:
             return "Error with tdbotModel.save_model. Model not recorded."
-##<<<
-
-##>>>
-    # def load_model(self):
-    #     try:
-    #         filename = self.model_name+'.joblib'
-    #         file_path=os.path.join(self.model_path,filename)
-    #         joblib.dump(model, file_path)
-    #         return "Model recorded"
-    #     except:
-    #         return "Error with tdbotModel.save_model. Model not recorded."
+    
     def load_model(self):
         try:
-            # filename = self.model_name+'.joblib'
-            # file_path=os.path.join(self.model_path,filename)
-            # joblib.dump(model, file_path)
-            with MongoClient(uri) as Mclient:
-                db = Mclient.models            
-                collection = db['trained_models']
-                doc = collection.find_one({"model_name": self.model_name})
-
-                model_bytes = doc["model"]
-                
-                # Create a BytesIO object to store the binary data, then load to correctly handle utf-encoding
-                model_buffer = BytesIO(model_bytes)
-                model = joblib.load(model_buffer)        
-            return {"Model_recovered": model}
-
+            filename = self.model_name+'.joblib'
+            file_path=os.path.join(self.model_path,filename)
+            joblib.dump(model, file_path)
+            return "Model recorded"
         except:
-            return "Error with tdbotModel.load_model. Model not recovered."
-##<<<        
+            return "Error with tdbotModel.save_model. Model not recorded."
 
-
-##>>>
-    # def get_prediction(self, X):
-    #     filename = self.model_name+'.joblib'
-    #     file_path=os.path.join(self.model_path,filename)
-    #     model = joblib.load(file_path)
-    #     return model.predict(X)[-1]
     def get_prediction(self, X):
-        # filename = self.model_name+'.joblib'
-        # file_path=os.path.join(self.model_path,filename)
-        model = self.load_model()["Model_recovered"]
+        filename = self.model_name+'.joblib'
+        file_path=os.path.join(self.model_path,filename)
+        model = joblib.load(file_path)
         return model.predict(X)[-1]
-##<<<
+
 
     # create a function to assess the financial performance
     def get_entry_score(self, y_pred, price_serie):
