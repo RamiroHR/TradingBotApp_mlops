@@ -77,25 +77,28 @@ Create a new environment from the requirements.txt file.
 3. In the menu under the notebook name select _**kernel**_ > _**change kernel**_ > _**env**_
 
 
-# Launch the API
+# Launch the API (tradingbot api)
 Run the following command in a terminal  
 ```
-uvicorn main:api --reload
+uvicorn main:api --reload --port 8000
 ```
 
-Then you can query the API at the browser going to the OpenAPI url 'http://localhost:8000/docs'
+Then you can query the API at the browser going to the OpenAPI url 'http://localhost:8000/docs'  
+Other APIs can be launched on the same way from the directory where the source code is located.
 
 
-# Docker containerized API
-The essential steps to build the docker image and the run the containerized API are detailed in the docker_files/docker_setup.sh file.  
+# Docker containerized APIs
+The essential steps to build the docker images and the run the containerized APIs are detailed in the docker_files/docker_setup.sh file.  
 The docker_setup.sh can be directly executed in a bash terminal from the project root folder.
 
-Otherwise the main commands can be manually executed in the terminal from the project root folder:  
-1. **Get the Docker image** 
+Otherwise the main commands can be manually executed in the terminal from the project root folder.  
+As an example, a container with the tradingbot api can be setted by executing (update commands from docker_setup.sh)  
+
+1. **Get the Docker image**   
 The Docker image can be found at the DockerHub as **ramirohr/tradingbot:1.0.2**, ready to pull.  
 Otherwise build the image locally (specifying the Dockerfile location)
     ```
-    docker image build . -t ramirohr/tradingbot:1.0.2 -f docker_files/tradingbot_api/Dockerfile
+    docker image build . -t ramirohr/tradingbot:1.0.8 -f docker_files/tradingbot_api/Dockerfile
     ```
 
 2. **run docker container & link ports & mount volumes**  
@@ -105,8 +108,17 @@ Otherwise build the image locally (specifying the Dockerfile location)
     docker container run --name bot_api -p 8000:8000 -d \
     --volume "$(pwd -W)/data:/data" \
     --volume "$(pwd -W)/models:/models" \
-    --volume "$(pwd -W)/src:/src" \
-    ramirohr/tradingbot:1.0.2
+    ramirohr/tradingbot:1.0.8
     ```
 3. **Query the containerized API**
 The containerized api is available at http://localhost:8000/docs
+
+
+# Deployment with microservices and a cloud database
+The files for a kubernetes deployment can be found at the ./kubernetes directory.  
+The necessary instructions to execute the deployment are indicated in the ./kubernetes/kube_setup.sh file.
+
+Current configurations deploy 3 pods, each one containing 2 containers. One container has the tradinbot-api while the other have a credential-api. The later provides a microservice to the former by verifying if the users/admins credentials passed to the tradingbot-api are in agreement to the credentials stored in the database (hosted in the cloud).
+
+The connections of the API's to the cloud database (MongoDB) is configured through a secret.yml
+
