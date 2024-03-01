@@ -7,7 +7,7 @@ from pymongo import MongoClient
 
 # Replace these values with your MongoDB credentials and container details
 USERNAME = 'tradingbot_admin'
-PASSWORD = 'tradingbot_pass' #os.environ.get('DB_ADMIN_PASS')  #'tradingbot_pass'
+PASSWORD = os.environ.get('DB_ADMIN_PASS')
 CLUSTERNAME = 'tb-cluster-0'
 
 # Connection URI

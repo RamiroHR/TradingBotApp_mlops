@@ -18,7 +18,7 @@ from io import BytesIO
 
 # Replace these values with your MongoDB credentials and container details
 USERNAME = 'tradingbot_admin'
-PASSWORD = 'tradingbot_pass' #os.environ.get('DB_ADMIN_PASS')  #'tradingbot_pass'
+PASSWORD = os.environ.get('DB_ADMIN_PASS')
 CLUSTERNAME = 'tb-cluster-0'
 
 # Connection URI
@@ -284,11 +284,18 @@ class tdbotModel:
                 # Data to insert
                 doc = {"model_name": self.model_name, "model": model_bytes}
 
-                # Insert the model bytes into the collection
-                collection.insert_one(doc)
-            return "Model recorded"
+                # Update or Insert the model bytes into the collection
+                filter = {"model_name": self.model_name}
+                values = {"$set": doc}
+                result = collection.update_one(filter, values, upsert=True)
+                
+            if result.upserted_id:
+                return "New model recorded"
+            else:
+                return "Model updated"
         
-        except:
+        except Exception as e:
+            print(f"Error: {e}")
             return "Error with tdbotModel.save_model. Model not recorded."
 ##<<<
 

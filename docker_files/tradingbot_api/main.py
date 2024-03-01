@@ -7,6 +7,9 @@ from datetime import datetime, timezone
 import time
 #import json
 #import numpy as np
+from pymongo import MongoClient
+import os
+import requests 
 
 
 
@@ -74,7 +77,6 @@ models_path = "models"
 ######################### -- detach verification process -- ##########################
 ######################################################################################
 
-import requests 
 
 ### Define verification functions:
 security = HTTPBasic()
@@ -83,8 +85,8 @@ def verify_user(credentials: HTTPBasicCredentials = Depends(security)):
     username = credentials.username
 
     # Make a request to the userdatabase API to verify the user credentials
-    url = 'http://localhost:8001/verify-user'  # as defined by the deployment& & service
-    # url = 'http://service-tb:8001/verify-user'  # as defined by the deployment& & service
+    # url = 'http://localhost:8001/verify-user'  # as defined by the deployment& & service
+    url = 'http://service-tb:8001/verify-user'  # as defined by the deployment& & service
     
     response = requests.get(url, auth=(username, credentials.password))
     
@@ -102,8 +104,8 @@ def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
     username = credentials.username
 
     # Make a request to the userdatabase API to verify the user credentials
-    url = 'http://localhost:8001/verify-admin'  # as defined by the deployment& & service
-    # url = 'http://service-tb:8001/verify-admin'  # as defined by the deployment& & service
+    # url = 'http://localhost:8001/verify-admin'  # as defined by the deployment& & service
+    url = 'http://service-tb:8001/verify-admin'  # as defined by the deployment& & service
     
     response = requests.get(url, auth=(username, credentials.password))
     
@@ -122,11 +124,11 @@ def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
 ######################### -- Add only some basic endpoints -- ########################
 ######################################################################################
 
-from pymongo import MongoClient
+
 
 # Replace these values with your MongoDB credentials and container details
 USERNAME = 'tradingbot_admin'
-PASSWORD = 'tradingbot_pass' #os.environ.get('DB_ADMIN_PASS')  #'tradingbot_pass'
+PASSWORD = os.environ.get('DB_ADMIN_PASS')
 CLUSTERNAME = 'tb-cluster-0'
 
 # Connection URI
