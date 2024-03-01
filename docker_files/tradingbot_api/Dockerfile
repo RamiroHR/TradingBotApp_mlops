@@ -1,9 +1,10 @@
 FROM python:3.9-slim
 
-ADD ./docker_files/tradingbot_api/requirements.txt ./main.py ./database_management_tools.py ./
+ADD ./docker_files/tradingbot_api/requirements.txt ./docker_files/tradingbot_api/main.py ./
 # ADD ./requirements_main_api.txt ./main.py ./database_management_tools.py ./
 
-COPY ./src ./src
+COPY ./docker_files/tradingbot_api/src ./src
+# COPY ./src ./src
 
 RUN apt-get update \
     && apt-get install -y build-essential libssl-dev \

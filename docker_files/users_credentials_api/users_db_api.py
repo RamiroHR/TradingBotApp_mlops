@@ -2,8 +2,15 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import os
 
+
+## instantiate the api and define the tags meatadata & security protocol
+tags_metadata = [
+    {'name': 'Micro-Services', 'description':'micro-services called by other APIs'},
+    {'name': 'Extra', 'description':'Additional internal methods - for debuging'}
+]
+
 # creating a FastAPI server
-server = FastAPI(title='User/Admin database API')
+server = FastAPI(title='Credentials Database API')
 
 
 # creating a connection to the MongoDB database
@@ -32,6 +39,10 @@ class User(BaseModel):
     email: str = 'daniel@datascientest.com'
 
 
+
+###############################################################
+####################  default methods  ########################
+
 # test API
 @server.get('/status')
 async def get_status():
@@ -40,10 +51,10 @@ async def get_status():
     return 1
 
 ## test connection to the database
-@server.get('/test-db-connection')
-async def test_mysql_engine():
+@server.get('/check-db-connection', name = 'Check database connection')
+async def check_MongoDB_connection():
     """
-    Test the correct creation of the MySQL engine with the recovered dtabase credentials
+    Test the correct connection to the MongoDB database
     """
     try:
         client = MongoClient(uri)
@@ -54,56 +65,6 @@ async def test_mysql_engine():
         return {"error": str(e)}
 
 
-## simple query: get all users
-def get_all_users():
-    with MongoClient(uri) as client:
-        db = client.api_login_credentials
-        collection = db.users
-        cursor = collection.find()
-        # Convert ObjectId to string for each document
-        users = [{**user, "_id": str(user["_id"])} for user in cursor]
-        return users
-    
-# Endpoint to retrieve all users
-@server.get("/users")
-async def retrieve_users():
-    users = get_all_users()
-    return users
-
-
-# Parametrized query: get a particular user
-@server.get("/users/{username}")
-async def get_user_by_username(username: str):
-    # Connect to MongoDB
-    with MongoClient(uri) as client:
-        # Access the database and collection
-        db = client.api_login_credentials
-        collection = db.users
-        
-        # Query MongoDB to find the user by username
-        user = collection.find_one({"username": username})
-
-        # If user not found, raise HTTPException with status code 404
-        if user is None:
-            raise HTTPException(status_code=404, detail="User not found")
-
-        # Convert ObjectId to string if necessary
-        user["_id"] = str(user["_id"])
-
-        return user
-    
-@server.get("/usernames")
-async def get_usernames():
-    # Connect to MongoDB
-    with MongoClient(uri) as client:
-        # Access the database and collection
-        db = client.api_login_credentials
-        collection = db.users
-        
-        # Query MongoDB to retrieve all usernames
-        usernames = [user["username"] for user in collection.find()]  # Assuming username is a field in your collection
-
-        return usernames
 
 
 #############################################################
@@ -138,7 +99,7 @@ def verify_user_credentials(credentials: HTTPBasicCredentials = Depends(security
     return username
 
 # Expose an endpoint to verify user credentials
-@server.get("/verify-user")
+@server.get("/verify-user", tags = ["Micro-Services"])
 async def verify_user_endpoint(credentials: HTTPBasicCredentials = Depends(verify_user_credentials)):
     return {"message": "User verified"}
 
@@ -170,6 +131,65 @@ def verify_admin_credentials(credentials: HTTPBasicCredentials = Depends(securit
     return username
 
 # Expose an endpoint to verify user credentials
-@server.get("/verify-admin")
+@server.get("/verify-admin", tags = ["Micro-Services"])
 async def verify_admin_endpoint(credentials: HTTPBasicCredentials = Depends(verify_admin_credentials)):
     return {"message": "Admin user verified"}
+
+
+
+############################################################
+#####################  Extra services  ######################
+
+
+## simple query: get all users
+def get_all_users():
+    with MongoClient(uri) as client:
+        db = client.api_login_credentials
+        collection = db.users
+        cursor = collection.find()
+        # Convert ObjectId to string for each document
+        users = [{**user, "_id": str(user["_id"])} for user in cursor]
+        return users
+    
+# Endpoint to retrieve all users
+@server.get("/users", tags = ["Extra"])
+async def retrieve_users():
+    users = get_all_users()
+    return users
+
+
+# Parametrized query: get a particular user
+@server.get("/users/{username}", tags = ["Extra"])
+async def get_user_by_username(username: str):
+    # Connect to MongoDB
+    with MongoClient(uri) as client:
+        # Access the database and collection
+        db = client.api_login_credentials
+        collection = db.users
+        
+        # Query MongoDB to find the user by username
+        user = collection.find_one({"username": username})
+
+        # If user not found, raise HTTPException with status code 404
+        if user is None:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Convert ObjectId to string if necessary
+        user["_id"] = str(user["_id"])
+
+        return user
+    
+@server.get("/usernames", tags = ["Extra"])
+async def get_usernames():
+    # Connect to MongoDB
+    with MongoClient(uri) as client:
+        # Access the database and collection
+        db = client.api_login_credentials
+        collection = db.users
+        
+        # Query MongoDB to retrieve all usernames
+        usernames = [user["username"] for user in collection.find()]  # Assuming username is a field in your collection
+
+        return usernames
+
+
