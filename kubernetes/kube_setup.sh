@@ -5,10 +5,10 @@
 ##############################################################
 
 ### create the secret
-$ kubectl apply -f kubernetes/tb_secret.yml
+kubectl apply -f kubernetes/tb_secret.yml
 
 ### creates the deployment
-$ kubectl apply -f kubernetes/tb_deployment.yml
+kubectl apply -f kubernetes/tb_deployment.yml
 
 ### creates the service
 kubectl apply -f kubernetes/tb_service.yml
