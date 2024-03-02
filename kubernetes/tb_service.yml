@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-tb
+  labels:
+    app: service-tb
+
+spec:
+  type: LoadBalancer
+  selector:          
+    app: pod-tb
+
+  ports:
+    - name: credentials-api-svc-port
+      port: 8001
+      protocol: TCP
+      targetPort: 7000   # Target port for the FastAPI container
+
+    - name: fastapi-svc-port
+      port: 8000
+      protocol: TCP
+      targetPort: 8000   # Target port for the second FastAPI container

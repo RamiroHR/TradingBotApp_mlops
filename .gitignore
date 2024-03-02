@@ -77,6 +77,8 @@ target/
 
 # exclude data from source control by default
 /data/
+/models/
+/docker_files/tradingbot_api/models/
 
 # Mac OS-specific storage files
 .DS_Store

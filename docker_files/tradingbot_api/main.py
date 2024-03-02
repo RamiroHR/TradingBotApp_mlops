@@ -1,13 +1,15 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Query, Form
+from fastapi import FastAPI, Depends, HTTPException, status #, Query, Form
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from pydantic import BaseModel, Field, validator, ValidationError
+from pydantic import BaseModel, Field #, validator, ValidationError
 from enum import Enum
 from src.data.make_dataset import getData
 from datetime import datetime, timezone
 import time
-import json
-import database_management_tools as dbm
-import numpy as np
+#import json
+#import numpy as np
+from pymongo import MongoClient
+import os
+import requests 
 
 
 
@@ -30,18 +32,50 @@ raw_data_path = "data/raw"
 models_path = "models"
 
 
-#####################################################################################
-######################### Login Protocols w/ Local Database #########################
-#####################################################################################
+#################################################################################
+#### Login protocols 
+#################################################################################
 
 
-## Set up connection to users/admins database
+### Set up connection to users/admins database
 
-from src.data.make_all_users_database import create_all_users_database
-create_all_users_database()
+# from src.data.make_all_users_database import create_all_users_database
+# create_all_users_database()
 
-users_db = dbm.get_registered_users()
-admins_db = dbm.get_admin_users()
+# users_db = dbm.get_registered_users()
+# admins_db = dbm.get_admin_users()
+
+
+# ### Define verification functions:
+# security = HTTPBasic()
+
+# def verify_user(credentials: HTTPBasicCredentials = Depends(security)):
+#     username = credentials.username
+    
+#     if not(users_db.get(username)) or not(credentials.password == users_db[username]['password']):        raise HTTPException(
+#             status_code=status.HTTP_401_UNAUTHORIZED,
+#             detail="Incorrect user credentials",
+#             headers={"WWW-Authenticate": "Basic"},
+#         )
+#     return username
+
+
+# def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
+#     username = credentials.username
+
+#     if not(admins_db.get(username)) or not(credentials.password == admins_db[username]['password']):
+#         raise HTTPException(
+#             status_code=status.HTTP_401_UNAUTHORIZED,
+#             detail="Incorrect admin credentials",
+#             headers={"WWW-Authenticate": "Basic"},
+#         )
+#     return username
+
+
+######################################################################################
+########################### test microservice architecture ###########################
+######################### -- detach verification process -- ##########################
+######################################################################################
 
 
 ### Define verification functions:
@@ -49,27 +83,61 @@ security = HTTPBasic()
 
 def verify_user(credentials: HTTPBasicCredentials = Depends(security)):
     username = credentials.username
+
+    # Make a request to the userdatabase API to verify the user credentials
+    # url = 'http://localhost:8001/verify-user'  # as defined by the deployment& & service
+    url = 'http://service-tb:8001/verify-user'  # as defined by the deployment& & service
     
-    if not(users_db.get(username)) or not(credentials.password == users_db[username]['password']):        raise HTTPException(
+    response = requests.get(url, auth=(username, credentials.password))
+    
+    if response.status_code != 200:
+        raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect user credentials",
             headers={"WWW-Authenticate": "Basic"},
         )
+    
     return username
 
 
 def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
     username = credentials.username
 
-    if not(admins_db.get(username)) or not(credentials.password == admins_db[username]['password']):
+    # Make a request to the userdatabase API to verify the user credentials
+    # url = 'http://localhost:8001/verify-admin'  # as defined by the deployment& & service
+    url = 'http://service-tb:8001/verify-admin'  # as defined by the deployment& & service
+    
+    response = requests.get(url, auth=(username, credentials.password))
+    
+    if response.status_code != 200:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect admin credentials",
+            detail="Incorrect user credentials",
             headers={"WWW-Authenticate": "Basic"},
         )
+    
     return username
 
 
+######################################################################################
+############################# test connection to MongoDB #############################
+######################### -- Add only some basic endpoints -- ########################
+######################################################################################
+
+
+
+# Replace these values with your MongoDB credentials and container details
+USERNAME = 'tradingbot_admin'
+PASSWORD = os.environ.get('DB_ADMIN_PASS')
+CLUSTERNAME = 'tb-cluster-0'
+
+# Connection URI
+connection_uri = "mongodb+srv://{username}:{password}@{cluster_name}.ztadynx.mongodb.net/?retryWrites=true&w=majority"
+uri = connection_uri.format(
+    username=USERNAME,
+    password=PASSWORD,
+    cluster_name=CLUSTERNAME
+)
 
 
 #################################################################################
@@ -84,6 +152,22 @@ async def get_app_status():
     return {'status' : 'App is available'}
 
 
+###==================== Test database connection =======================###
+@api.get('/check-db-connection', name = 'Check database connection',
+                    tags = ['Public'])
+async def check_MongoDB_connection():
+    """
+    Test the correct connection to the MongoDB database
+    """
+    try:
+        client = MongoClient(uri)
+        client.admin.command('ping')
+        return {"status": "Pinged your deployment. You successfully connected to MongoDB Atlas!"}
+    except Exception as e:
+        # If there's an exception, display the error
+        return {"error": str(e)}
+
+
 ###========================== sign up ==========================###
 class User(BaseModel):
     username: str
@@ -93,18 +177,28 @@ class User(BaseModel):
                     description = 'Add new user to the users database.',
                     tags = ['Public'])
 async def post_new_user(user: User):
-    
     new_user = {
-        user.username: {
             "username": user.username,
             "password": user.password
             }
-    }
-    
-    dbm.write_database(new_user)
-    
-    return user
-
+        
+    with MongoClient(uri) as client:
+        # Access the database and collection
+        db = client.api_login_credentials
+        collection = db.users
+        
+        # Check if the username already exists
+        if collection.find_one({"username": user.username}):
+            raise HTTPException(status_code=400, detail="Username already exists")
+        
+        # insert data in MongoDB 
+        result = collection.insert_one(new_user)
+        
+        # Check if the insertion was successful
+        if result.acknowledged:
+            return {"message": "User added successfully", "new_user": user.username}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to add user")
      
 
 ##========================== price_hist ==========================###
@@ -123,8 +217,6 @@ Intervals = Enum('Assets', {item: item for item in allowed_interval}, type = str
 async def get_price_hist(
     asset: Asset,
     interval: Intervals
-    # start_date: str = Query(None, description="Select earliest date JJ/MM/YYY. Default : 01/07/2017 (Binance launch)."),
-    # end_date: str = Query(None, description="Select end date JJ/MM/YYY. Must be after the start date")
     ):
 
     # set the parameters
@@ -137,7 +229,7 @@ async def get_price_hist(
     }
 
     get_data = getData(**params)
-    get_data.update_file_path(raw_data_path)
+#>>>    get_data.update_file_path(raw_data_path)
     data = get_data.getKlines()
 
     # get the first date of the dataset
@@ -207,11 +299,9 @@ async def get_prediction(
 
 
 
-
 #################################################################################
 ######################## Define Registered Admin Methods ########################
 #################################################################################
-
 
 from src.models.train_model import tdbotModel
 from src.data.read_dataset import openFile
@@ -262,13 +352,11 @@ async def get_model_params(model_name: str = 'model_test',
     """
 
     tm = tdbotModel(models_path, model_name)
-
     response = tm.get_params()
-        
     return response
 
 
-#======================== Update the model parameters ========================###
+##======================== Update the model parameters ========================###
 @api.put('/update_model_params', name = "Create or Update the parameters of a model",
                          description = 'Create or Update the parameters for a model',
                          tags = ['Admins'])
@@ -298,7 +386,7 @@ async def update_model_params(params: Params,
     return response
 
 
-#### [ ] assess a model 
+##============================= assess a model  =============================###
 @api.post('/assess_ml_performance', name = 'Assess the accuracy of a model',
                          description = "Assess the accuracy of a parameters' set with a cross-validation. This endpoint does not record any file.",
                          tags = ['Admins'])
@@ -357,7 +445,8 @@ async def assess_ml_performance(
     return response
 
 
-#### [ ] assess a model - with financial indicator
+
+##==================== assess a model / with financial indicator ==================###
 @api.post('/assess_financial_performance', name = 'Assess the financial performance of a model',
                          description = "Assess the financial performance of a parameters' set with a cross-validation. This endpoint does not record any file.",
                          tags = ['Admins'])
@@ -413,7 +502,10 @@ async def assess_financial_performance(
     
     return response
 
-#### [ ] train the model 
+
+
+##=========================== train the model =========================###
+
 @api.put('/train_model', name = 'Train the model',
                          description = 'Train the model and save it.',
                          tags = ['Admins'])
@@ -463,5 +555,3 @@ async def train_model(
         response['accuracy'] = acc
     
     return response
-
-

@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-tb
+  labels:
+    app: deployment-tb
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: pod-tb
+
+  template:
+    metadata:
+      labels:
+        app: pod-tb
+    spec:
+      containers:
+
+        ## credentials microservice api container:
+        - name: cont-credentials-api
+          image:  ramirohr/credentials_api:1.0.3
+          ports:
+          - containerPort: 7000   # fastapi image exposed port
+
+          ## transfering secret into the an env variable:
+          env:
+          - name: DB_ADMIN_PASS
+            valueFrom:
+              secretKeyRef:
+                name: mongodb-admin-pass  # secret name.
+                key: password         # key containing the secret.
+
+
+        ## Router api container:
+        - name: cont-router-api
+          image: ramirohr/tradingbot:1.0.8
+          ports:
+            - containerPort: 8000
+
+          ## transfering secret into the an env variable:
+          env:
+          - name: DB_ADMIN_PASS
+            valueFrom:
+              secretKeyRef:
+                name: mongodb-admin-pass  # secret name.
+                key: password         # key containing the secret.
+
+      #     ## define volume mount points
+          # volumeMounts:
+      #       - name: data-volume
+      #         mountPath: /data
+      #       - name: models-volume
+      #         mountPath: /models
+            # - name: src-volume
+            #   mountPath: /src
+
+      # ## mount volumes
+      # volumes:
+      #   - name: data-volume
+      #     hostPath:
+      #       path: "C:/Ramiro/Data Science/0_DataScientest/04_MLOps_project/TradingBotApp_mlops/data"   # path to the data directory on the host
+      #   - name: models-volume
+      #     hostPath:
+      #       path: "C:/Ramiro/Data Science/0_DataScientest/04_MLOps_project/TradingBotApp_mlops/models"  # path to models directory on the host
+        # - name: src-volume
+        #   hostPath:
+        #     path: "C:\\Ramiro\\Data\ Science\\0_DataScientest\\04_MLOps_project\\TradingBotApp_mlops\\src"     # Path to source code directory on the host
