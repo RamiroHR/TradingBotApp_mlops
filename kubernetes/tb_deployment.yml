@@ -34,7 +34,7 @@ spec:
 
         ## Router api container:
         - name: cont-router-api
-          image: ramirohr/tradingbot:1.0.8
+          image: ramirohr/tradingbot:1.0.9
           ports:
             - containerPort: 8000
 

@@ -137,6 +137,7 @@ class getData:
                 cursor = collection.find()
                 
                 df_temp = pd.DataFrame(list(cursor))
+                df_temp.drop(columns=['_id'], inplace=True)
                 
                 # take the last entry as a start date for the update
                 self.startDate = df_temp.iloc[-1,0]
