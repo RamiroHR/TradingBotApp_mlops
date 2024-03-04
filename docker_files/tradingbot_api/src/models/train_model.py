@@ -31,12 +31,21 @@ uri = connection_uri.format(
 #<<<
 
 class tdbotModel:
-    def __init__(self, path='', model_name='model_test'):
+    def __init__(self, path='', model_name='model_test', interval='1d', asset='BTCUSDT'):
         
         self.test_size = 1000
         self.update_file_path(path)
         self.model_name=model_name
+        self.interval = interval
+        self.asset = asset
+        self.model_fullname = self.get_model_fullname()
 
+    def get_model_fullname(self):
+        '''
+        define the full name of the model. This name will be used to record the parameters and models
+        '''
+        model_fullname = f"{self.model_name}-{self.asset}-{self.interval}"
+        return model_fullname
 
     def update_file_path(self, file_path):
         self.model_path=os.path.abspath(file_path) # convert the directory into an absolute directory in order to avoid potential bugs during deployments
@@ -73,10 +82,10 @@ class tdbotModel:
             db = Mclient.models            
             collection = db['model_params']
 
-            model_params = collection.find_one({"model_name": self.model_name})
+            model_params = collection.find_one({"model_name": self.model_fullname})
 
         if model_params is None:
-            # return self.model_name + " not found in Database"
+            # return self.model_fullname + " not found in Database"
             return False
         else: 
             # Convert ObjectId to string if necessary
@@ -91,7 +100,7 @@ class tdbotModel:
     #     '''
     #     Update the parameters to be used for the model
     #     '''
-    #     file_name=self.model_name+'_params.json'
+    #     file_name=self.model_fullname+'_params.json'
     #     file_path = os.path.join(self.model_path, file_name)
     #     with open(file_path, 'w') as params_file:
     #         params_file.write(json.dumps(params, indent=4))
@@ -108,10 +117,10 @@ class tdbotModel:
             db = Mclient.models            
             collection = db['model_params']
 
-            previous_params = collection.find_one({"model_name": self.model_name})
+            previous_params = collection.find_one({"model_name": self.model_fullname})
 
             # Define the filter to find the document by its "name"
-            filter = {"model_name": self.model_name}
+            filter = {"model_name": self.model_fullname}
 
             # Define the new values you want to update
             # new_values = {"$set": params["params_model"]}  # Update the values as needed
@@ -257,7 +266,7 @@ class tdbotModel:
 ##>>>    
     # def save_model(self, model):
     #     try:
-    #         filename = self.model_name+'.joblib'
+    #         filename = self.model_fullname+'.joblib'
     #         file_path=os.path.join(self.model_path,filename)
     #         joblib.dump(model, file_path)
     #         return "Model recorded"
@@ -265,7 +274,7 @@ class tdbotModel:
     #         return "Error with tdbotModel.save_model. Model not recorded."
     def save_model(self, model):
         try:
-            filename = self.model_name+'.joblib'
+            filename = self.model_fullname+'.joblib'
             file_path=os.path.join(self.model_path,filename)
             #joblib.dump(model, file_path)
         
@@ -282,10 +291,10 @@ class tdbotModel:
                     model_bytes = bson.binary.Binary(f.read())
                 
                 # Data to insert
-                doc = {"model_name": self.model_name, "model": model_bytes}
+                doc = {"model_name": self.model_fullname, "model": model_bytes}
 
                 # Update or Insert the model bytes into the collection
-                filter = {"model_name": self.model_name}
+                filter = {"model_name": self.model_fullname}
                 values = {"$set": doc}
                 result = collection.update_one(filter, values, upsert=True)
                 
@@ -316,31 +325,41 @@ class tdbotModel:
             with MongoClient(uri) as Mclient:
                 db = Mclient.models            
                 collection = db['trained_models']
-                doc = collection.find_one({"model_name": self.model_name})
+                doc = collection.find_one({"model_name": self.model_fullname})
 
                 model_bytes = doc["model"]
                 
                 # Create a BytesIO object to store the binary data, then load to correctly handle utf-encoding
                 model_buffer = BytesIO(model_bytes)
                 model = joblib.load(model_buffer)        
-            return {"Model_recovered": model}
+            return {
+                    'model_exist': True,
+                    "Model_recovered": model
+                    }
 
         except:
-            return "Error with tdbotModel.load_model. Model not recovered."
+            return {'model_exist': False}
 ##<<<        
 
 
 ##>>>
     # def get_prediction(self, X):
-    #     filename = self.model_name+'.joblib'
+    #     filename = self.model_fullname+'.joblib'
     #     file_path=os.path.join(self.model_path,filename)
     #     model = joblib.load(file_path)
     #     return model.predict(X)[-1]
     def get_prediction(self, X):
-        # filename = self.model_name+'.joblib'
+        # filename = self.model_fullname+'.joblib'
         # file_path=os.path.join(self.model_path,filename)
-        model = self.load_model()["Model_recovered"]
-        return model.predict(X)[-1]
+        my_model = self.load_model()
+        if my_model['model_exist']:
+            return {
+                    'pred_exist': True,
+                    'prediction': my_model['Model_recovered'].predict(X)[-1]
+            }
+        else:
+            return {'pred_exist': False,
+                    'prediction': None}
 ##<<<
 
     # create a function to assess the financial performance
