@@ -78,6 +78,23 @@ class tdbotAPI:
             output['data'] = response.json()
         
         return output
+    
+    def check_model_exists(self, asset, interval):
+        endpoint = 'check_model_exists'
+        url = os.path.join(self.url, endpoint)
+
+        params = {'asset': asset, 'interval': interval, 'model_name': 'model_test'}
+        headers = {'accept': 'application/json'}
+
+        response = requests.get(url, params=params, headers=headers)
+
+        output = {}
+        output['status_code'] = response.status_code
+
+        if response.status_code == 200:
+            output['data'] = response.json()
+        
+        return output
 
     def get_prediction(self, asset, interval):
         endpoint = 'prediction'
@@ -197,32 +214,6 @@ tdb = tdbotAPI()
 
 
 
-def page_time_to_buy():
-
-    st.title('Time to buy ?')
-
-    if st.button("Get prediction"):
-        # If the button is clicked, call your function
-
-        st.write('Your selection:')
-        st.write('* Asset:', asset)
-        st.write('* Horizon:', interval, '(time interval used: ', interval_list[interval], ')')
-
-        with st.status('Updating historical data'):
-            update_price = tdb.update_price_hist(asset_list[asset], interval_list[interval])
-            if update_price['status_code']==200:
-                st.write('Data updated. Last: ', update_price['data']['last_close_date'])
-            else:
-                st.write('Error in updating the historical data.')
-
-        with st.status('Get prediction'):
-            pred = tdb.get_prediction(asset_list[asset], interval_list[interval])
-            st.write(pred)
-        
-        st.write('You should probably ', pred['data'], ' ;)')
-        
-
-
 def parameters_page():
     #st.header('Parameters')
     st.markdown('[Parameters definition available on Github](https://github.com/RamiroHR/TradingBotApp_mlops)')
@@ -322,6 +313,41 @@ def training_page():
                 st.metric('Accuracy', value=acc)
                 esc = round(response['data']['entry_score']*100,2)
                 st.metric('Entry score', value=esc)
+
+
+
+def page_time_to_buy():
+
+    st.title('Time to buy ?')
+
+    if not asset:
+        st.markdown('<p style="color:red;">Warning - Please select an <b>asset</b> in the left panel</p>', unsafe_allow_html=True)
+    elif not interval:
+        st.markdown('<p style="color:red;">Warning - Please select an <b>horizon of time</b> in the left panel</p>', unsafe_allow_html=True)
+    elif tdb.check_model_exists(asset_list[asset], interval_list[interval])['status_code'] !=200: # check if the model exists
+        st.markdown('<p style="color:red;">Warning - There is no model for '+asset_list[asset]+'-'+interval_list[interval]+'. Please go back to step 2 and train a model first.</p>', unsafe_allow_html=True)
+    else:
+        if st.button("Get prediction"):
+            # If the button is clicked, call your function
+
+            st.write('Your selection:')
+            st.write('* Asset:', asset)
+            st.write('* Horizon:', interval, '(time interval used: ', interval_list[interval], ')')
+
+            with st.status('Updating historical data'):
+                update_price = tdb.update_price_hist(asset_list[asset], interval_list[interval])
+                if update_price['status_code']==200:
+                    st.write('Data updated. Last: ', update_price['data']['last_close_date'])
+                else:
+                    st.write('Error in updating the historical data.')
+
+            with st.status('Get prediction'):
+                pred = tdb.get_prediction(asset_list[asset], interval_list[interval])
+                st.write(pred)
+            
+            st.write('You should probably ', pred['data'], ' ;)')
+        
+
 
 
 tab1, tab2, tab3 = st.tabs(['Step1 - Parameters', 'Step2 - Training', 'Step 3 - Time to buy ?'])
