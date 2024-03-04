@@ -211,10 +211,10 @@ Asset = Enum('Assets', {item: item for item in allowed_assets}, type = str)
 allowed_interval = ['1h', '4h', '1d']
 Intervals = Enum('Assets', {item: item for item in allowed_interval}, type = str)
 
-@api.get('/price_hist', name = 'Fetch Asset Price History',
+@api.put('/update_price_hist', name = 'Fetch Asset Price History',
                     description = 'Fetch asset specific data over a selected period of time and record it.',
                     tags = ['Public'])
-async def get_price_hist(
+async def update_price_hist(
     asset: Asset,
     interval: Intervals
     ):
@@ -246,6 +246,53 @@ async def get_price_hist(
             'first_open_date': first_date, 
             'last_close_date': last_date}
     
+
+@api.get('/check_actual_price_hist', name = 'check if price exists for an asset',
+                    description = 'Check if price exists in our database for a specific asset',
+                    tags = ['Public'])
+async def check_actual_price_hist(
+    asset: Asset,
+    interval: Intervals):
+
+    open_csv = openFile(raw_data_path, asset, interval)
+    if open_csv.is_data() == False:
+        raise HTTPException(status_code=404, detail="No data available")
+    else:
+        data = open_csv.data
+
+        # get the first date of the dataset
+        first_date = data.iloc[0].openT
+        first_date = datetime.fromtimestamp(first_date/1000)
+        first_date = first_date.strftime("%d/%m/%Y %H:%M:%S")
+
+        # get the last date of the dataset
+        last_date = data.iloc[-1].closeT
+        last_date = datetime.fromtimestamp(last_date/1000) 
+        last_date = last_date.strftime("%d/%m/%Y %H:%M:%S")
+
+        output = {
+                    'asset': asset, 
+                    'interval': interval, 
+                    'first_open_date': first_date, 
+                    'last_close_date': last_date
+                }
+    
+    return output
+
+
+@api.get('/check_model_exists', name = 'Check if a model exists and has been trained',
+                    description = 'Check if model exists in our database for a specific asset and interval',
+                    tags = ['Public'])
+async def check_model_exists(
+    asset: Asset,
+    interval: Intervals,
+    model_name: str = 'model_test'):
+
+    tm = tdbotModel(models_path, model_name, asset, interval)
+    if tm.load_model()['model_exist'] == False:
+        raise HTTPException(status_code=404, detail="No model available")
+
+    return True
 
 
 #################################################################################
@@ -313,8 +360,8 @@ class Params(BaseModel):
     target_ema_length: int = Field(default=7)
     target_diff_length: int = Field(default=14)
     target_pct_threshold: float = Field(default=0.2)
-    model_n_neighbors: int = Field(default=30)
-    model_weights: str = Field(default="uniform")
+    tdbmodel_n_neighbors: int = Field(default=30)
+    tdbmodel_weights: str = Field(default="uniform")
     cv_n_splits: int = Field(default=5)
 
 def get_params_features_eng(params):
@@ -330,8 +377,8 @@ def get_params_features_eng(params):
 def get_params_model(params):
     # function to update the input data if incorrect
     params_checked = {}
-    params_checked["n_neighbors"] = params.model_n_neighbors if (type(params.model_n_neighbors)==int and params.model_n_neighbors<36) else 30
-    params_checked["weights"] = params.model_weights if params.model_weights in ["uniform", "distance"] else "uniform"
+    params_checked["n_neighbors"] = params.tdbmodel_n_neighbors if (type(params.tdbmodel_n_neighbors)==int and params.tdbmodel_n_neighbors<36) else 30
+    params_checked["weights"] = params.tdbmodel_weights if params.tdbmodel_weights in ["uniform", "distance"] else "uniform"
     return params_checked
 
 def get_params_cv(params):
@@ -345,14 +392,23 @@ def get_params_cv(params):
 @api.get('/get_model_params', name = "Get the parameters of a model",
                          description = 'Verify the parameters actually in use for a given model (using the model_name as an ID)',
                          tags = ['Admins'])
-async def get_model_params(model_name: str = 'model_test',
-                           username: str = Depends(verify_admin)):
+async def get_model_params(
+                            asset: Asset,
+                            interval: Intervals,
+                            model_name: str = 'model_test',
+                            username: str = Depends(verify_admin)
+                            ):
     """
     Returns the parameters of the model
     """
 
-    tm = tdbotModel(models_path, model_name)
+    tm = tdbotModel(models_path, model_name, asset, interval)
     response = tm.get_params()
+
+    if response is False:
+        # return 404 code if no parameters
+        raise HTTPException(status_code=404, detail="No parameters available")
+    
     return response
 
 
@@ -360,10 +416,13 @@ async def get_model_params(model_name: str = 'model_test',
 @api.put('/update_model_params', name = "Create or Update the parameters of a model",
                          description = 'Create or Update the parameters for a model',
                          tags = ['Admins'])
-async def update_model_params(params: Params,
-                              username: str = Depends(verify_admin),
-                              model_name: str = 'model_test'
-                       ):
+async def update_model_params(
+                            asset: Asset,
+                            interval: Intervals,
+                            params: Params,
+                            username: str = Depends(verify_admin),
+                            model_name: str = 'model_test'
+                            ):
     """
     Update the parameters of the model and return the actual parameters
     """
@@ -375,7 +434,7 @@ async def update_model_params(params: Params,
         "params_cv": get_params_cv(params)
     }
     print(pp_params)
-    tm = tdbotModel(models_path, model_name)
+    tm = tdbotModel(models_path, model_name, asset, interval)
     
     response = {}
     response['model_name'] = model_name
@@ -424,7 +483,7 @@ async def assess_ml_performance(
     input_info['target_1_threshold'] = threshold
 
     # open a instance of tdbotModel
-    tm = tdbotModel(models_path, 'assess')
+    tm = tdbotModel(models_path, 'assess', asset, interval)
     
     # get all the parameters in the relevant format
     params_model=get_params_model(params)
@@ -484,7 +543,7 @@ async def assess_financial_performance(
     input_info['target_1_threshold'] = threshold
 
     # open a instance of tdbotModel
-    tm = tdbotModel(models_path, 'assess')
+    tm = tdbotModel(models_path, 'assess', asset, interval)
     
     # get all the parameters in the relevant format
     params_model=get_params_model(params)
@@ -521,37 +580,40 @@ async def train_model(
 
     # read the dataset
     open_csv = openFile(raw_data_path, asset, interval)
+    if open_csv.is_data() == False:
+        raise HTTPException(status_code=404, detail="No data available. Fetch the data first.")
     df = open_csv.data
 
     # open a instance of tdbotModel
-    tm = tdbotModel(models_path, model_name)
+    tm = tdbotModel(models_path, model_name, asset, interval)
 
     # read the params
     params = tm.get_params()
-
     if params==False:
-        response = "No existing parameters for this model. Use /update_model_params to create the parameters."
-    else:
-        # preprocessing
-        features_params=params['params_features_eng']
+        raise HTTPException(status_code=404, detail="No parameters available. Use /update_model_params to create the parameters.")
 
-        # get the features
-        X_transform = getFeatures(features_params['features_length'], features_params['features_factor'])
-        X = X_transform.fit_transform(df.close)
+    # once we have the data AND the parameters, we can perform the training
 
-        # get the target (float)
-        y_transform = getTarget(features_params['target_ema_length'], features_params['target_diff_length'], features_params['target_pct_threshold'], True)
-        y, threshold = y_transform.fit_transform(df.close)
+    # preprocessing
+    features_params=params['params_features_eng']
 
-        # train the model
-        training_response, model, acc, entry_score = tm.train_model(X, y, df.close)
-        
-        # create the response to return
-        response={}
-        response['model_name'] = model_name
-        response['training_response'] = training_response
-        response['recording_response'] = tm.save_model(model)
-        response['entry_score'] = entry_score
-        response['accuracy'] = acc
+    # get the features
+    X_transform = getFeatures(features_params['features_length'], features_params['features_factor'])
+    X = X_transform.fit_transform(df.close)
+
+    # get the target (float)
+    y_transform = getTarget(features_params['target_ema_length'], features_params['target_diff_length'], features_params['target_pct_threshold'], True)
+    y, threshold = y_transform.fit_transform(df.close)
+
+    # train the model
+    training_response, model, acc, entry_score = tm.train_model(X, y, df.close)
+    
+    # create the response to return
+    response={}
+    response['model_name'] = model_name
+    response['training_response'] = training_response
+    response['recording_response'] = tm.save_model(model)
+    response['entry_score'] = entry_score
+    response['accuracy'] = acc
     
     return response

@@ -51,3 +51,9 @@ class openFile:
         df.set_index(pd.DatetimeIndex(df["datetime"]), inplace=True)
         return df
 ##<<<
+
+    def is_data(self):
+        if len(self.data) <= 0:
+            return False
+        else:
+            return True

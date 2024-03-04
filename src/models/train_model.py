@@ -10,12 +10,19 @@ import joblib
 import json
 
 class tdbotModel:
-    def __init__(self, path='', model_name='model_test'):
+    def __init__(self, path='', model_name='model_test', interval='1d', asset='BTCUSDT'):
         
         self.test_size = 1000
         self.update_file_path(path)
         self.model_name=model_name
-    
+        self.interval = interval
+        self.asset = asset
+        self.model_fullname = self.get_model_fullname()
+
+    def get_model_fullname(self):
+        model_fullname = f"{self.model_name}-{self.asset}-{self.interval}"
+        return model_fullname
+
     def update_file_path(self, file_path):
         self.model_path=os.path.abspath(file_path) # convert the directory into an absolute directory in order to avoid potential bugs during deployments
         # Check if the folder exists
@@ -30,7 +37,7 @@ class tdbotModel:
         '''
         Get the parameters for a model on the basis of its name
         '''
-        file_name=self.model_name+'_params.json'
+        file_name=self.model_fullname+'_params.json'
         file_path = os.path.join(self.model_path, file_name)
         print(file_path)
         if os.path.isfile(file_path):
@@ -44,7 +51,7 @@ class tdbotModel:
         '''
         Update the parameters to be used for the model
         '''
-        file_name=self.model_name+'_params.json'
+        file_name=self.model_fullname+'_params.json'
         file_path = os.path.join(self.model_path, file_name)
         with open(file_path, 'w') as params_file:
             params_file.write(json.dumps(params, indent=4))
@@ -175,9 +182,10 @@ class tdbotModel:
             # if there are no parameter, return False
             return "Error. Missing parameters.", None, None, None
     
+
     def save_model(self, model):
         try:
-            filename = self.model_name+'.joblib'
+            filename = self.model_fullname+'.joblib'
             file_path=os.path.join(self.model_path,filename)
             joblib.dump(model, file_path)
             return "Model recorded"
@@ -186,18 +194,22 @@ class tdbotModel:
     
     def load_model(self):
         try:
-            filename = self.model_name+'.joblib'
+            filename = self.model_fullname+'.joblib'
             file_path=os.path.join(self.model_path,filename)
-            joblib.dump(model, file_path)
-            return "Model recorded"
+            model = joblib.load(file_path)
+            return {
+                    'model_exist': True,
+                    "Model_recovered": model
+                    }
         except:
-            return "Error with tdbotModel.save_model. Model not recorded."
+            return {'model_exist': False}
 
     def get_prediction(self, X):
-        filename = self.model_name+'.joblib'
-        file_path=os.path.join(self.model_path,filename)
-        model = joblib.load(file_path)
-        return model.predict(X)[-1]
+        response, model = self.load_model()
+        if response:
+            return model.predict(X)[-1]
+        else:
+            return 'No model trained'
 
 
     # create a function to assess the financial performance
