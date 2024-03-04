@@ -329,18 +329,32 @@ async def get_prediction(
     
     # read the dataset
     open_csv = openFile(raw_data_path, asset, interval)
+    if open_csv.is_data() == False:
+        raise HTTPException(status_code=404, detail="No data available. Fetch the data first.")
     df = open_csv.data
 
+    # open a instance of tdbotModel
+    tm = tdbotModel(models_path, model_name, asset, interval)
+
+    # read the params
+    params = tm.get_params()
+    if params==False:
+        raise HTTPException(status_code=404, detail="No parameters available. Use /update_model_params to create the parameters.")
+
+    # once we have the data AND the parameters, we can perform the training
+
     # preprocessing
-    length=7
-    factor=10
+    features_params=params['params_features_eng']
 
     # get the features
-    X_transform = getFeatures(length, factor)
+    X_transform = getFeatures(features_params['features_length'], features_params['features_factor'])
     X = X_transform.fit_transform(df.close)
 
-    tm = tdbotModel(models_path, model_name)
-    response = "BUY" if tm.get_prediction(X.iloc[-1:])==1 else "WAIT"
+    pred = tm.get_prediction(X.iloc[-1:])
+    if pred['pred_exist']==False:
+        raise HTTPException(status_code=404, detail="No model trained. Use /train_model to train the model.")
+    
+    response = "BUY" if pred['prediction']==1 else "WAIT"
     
     return response
 

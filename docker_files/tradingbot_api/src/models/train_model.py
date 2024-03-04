@@ -351,8 +351,15 @@ class tdbotModel:
     def get_prediction(self, X):
         # filename = self.model_fullname+'.joblib'
         # file_path=os.path.join(self.model_path,filename)
-        model = self.load_model()["Model_recovered"]
-        return model.predict(X)[-1]
+        my_model = self.load_model()
+        if my_model['model_exist']:
+            return {
+                    'pred_exist': True,
+                    'prediction': my_model['Model_recovered'].predict(X)[-1]
+            }
+        else:
+            return {'pred_exist': False,
+                    'prediction': None}
 ##<<<
 
     # create a function to assess the financial performance

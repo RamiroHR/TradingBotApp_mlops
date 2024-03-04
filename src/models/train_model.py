@@ -205,11 +205,15 @@ class tdbotModel:
             return {'model_exist': False}
 
     def get_prediction(self, X):
-        response, model = self.load_model()
-        if response:
-            return model.predict(X)[-1]
+        my_model = self.load_model()
+        if my_model['model_exist']:
+            return {
+                    'pred_exist': True,
+                    'prediction': my_model['Model_recovered'].predict(X)[-1]
+            }
         else:
-            return 'No model trained'
+            return {'pred_exist': False,
+                    'prediction': None}
 
 
     # create a function to assess the financial performance
