@@ -5,7 +5,7 @@ metadata:
   labels:
     app: deployment-tb
 spec:
-  replicas: 3
+  replicas: 4
   selector:
     matchLabels:
       app: pod-tb
@@ -45,6 +45,14 @@ spec:
               secretKeyRef:
                 name: mongodb-admin-pass  # secret name.
                 key: password         # key containing the secret.
+
+
+        ## user interface streamlit container:
+        - name: cont-streamlit-ui
+          image:  ramirohr/streamlit_ui:1.0.0
+          ports:
+          - containerPort: 8501   # Docker image exposed port
+
 
       #     ## define volume mount points
           # volumeMounts:

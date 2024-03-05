@@ -16,7 +16,12 @@ spec:
       protocol: TCP
       targetPort: 7000   # Target port for the FastAPI container
 
-    - name: fastapi-svc-port
+    - name: router-api-svc-port
       port: 8000
       protocol: TCP
       targetPort: 8000   # Target port for the second FastAPI container
+
+    - name: ui-svc-port
+      port: 7999
+      protocol: TCP
+      targetPort: 8501   # Exposed port in the ui container

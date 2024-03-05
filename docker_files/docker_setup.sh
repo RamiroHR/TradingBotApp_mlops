@@ -32,3 +32,14 @@ docker image build . -t ramirohr/credentials_api:1.0.4 -f docker_files/users_cre
 
 ## run a container
 docker container run --name credential_api -p 7000:7000 -d ramirohr/credentials_api:1.0.3
+
+
+
+#############################################################################
+################## --- USERS INTERFACE - STREAMLIT --- ######################
+
+## build image
+docker image build . -t ramirohr/streamlit_ui:1.0.0 -f docker_files/streamlit/Dockerfile
+
+## run a container
+docker container run --name streamlit_ui -p 8501:8501 -d ramirohr/streamlit_ui:1.0.0
