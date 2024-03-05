@@ -46,9 +46,11 @@ class openFile:
                 
             df = pd.DataFrame(list(cursor))
         
-        df.drop(columns=['_id'], inplace=True)
-        df['datetime']=pd.to_datetime(df["openT"], utc=True, unit="ms")
-        df.set_index(pd.DatetimeIndex(df["datetime"]), inplace=True)
+        if len(df)>0:
+            df.drop(columns=['_id'], inplace=True)
+            df['datetime']=pd.to_datetime(df["openT"], utc=True, unit="ms")
+            df.set_index(pd.DatetimeIndex(df["datetime"]), inplace=True)
+        
         return df
 ##<<<
 
