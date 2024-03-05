@@ -148,7 +148,13 @@ Create a new environment from the requirements.txt file.
 
 <br>
 
-# Launch individual the APIs
+# Launch individual APIs
+Create an environmental variable with the cloud database password  
+```
+export DB_ADMIN_PASS=<insert-database-password-string>
+```  
+Make sure the the APIs main.py file is connecting to the url using http://localhost:<ports> instead of the service namespace. The service namespace is used only when deployed with kubernetes.  
+
 Run the following command in a terminal from the directory where the source code of the desired API is located.  
 ```
 uvicorn main:api --reload
