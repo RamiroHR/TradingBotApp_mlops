@@ -1,6 +1,7 @@
 import streamlit as st
 import requests 
 import os
+import platform
 
 
 ###--- SIDEBAR SELECTION ---###
@@ -29,6 +30,13 @@ options=list(interval_list.keys()),
 index=None,
 )
 
+### Define url to be operating system agnostic:
+def make_url(baseurl, endpoint):
+    url = os.path.join(baseurl, endpoint)
+    if platform.system() == 'Windows':
+        url = url.replace('\\', '/')    
+    return url
+
 
 ###---Class tdbotAPI---###
 
@@ -47,7 +55,8 @@ class tdbotAPI:
 
     def update_price_hist(self, asset, interval):
         endpoint = 'update_price_hist'
-        url = os.path.join(self.url, endpoint)
+        # url = os.path.join(self.url, endpoint)
+        url = make_url(self.url, endpoint)
 
         params = {'asset': asset, 'interval': interval}
         headers = {'accept': 'application/json'}
@@ -64,7 +73,8 @@ class tdbotAPI:
     
     def check_actual_price_hist(self, asset, interval):
         endpoint = 'check_actual_price_hist'
-        url = os.path.join(self.url, endpoint)
+        # url = os.path.join(self.url, endpoint)
+        url = make_url(self.url, endpoint)
 
         params = {'asset': asset, 'interval': interval}
         headers = {'accept': 'application/json'}
@@ -81,7 +91,8 @@ class tdbotAPI:
     
     def check_model_exists(self, asset, interval):
         endpoint = 'check_model_exists'
-        url = os.path.join(self.url, endpoint)
+        # url = os.path.join(self.url, endpoint)
+        url = make_url(self.url, endpoint)
 
         params = {'asset': asset, 'interval': interval, 'model_name': 'model_test'}
         headers = {'accept': 'application/json'}
@@ -98,8 +109,9 @@ class tdbotAPI:
 
     def get_prediction(self, asset, interval):
         endpoint = 'prediction'
-        url = os.path.join(self.url, endpoint)
-
+        # url = os.path.join(self.url, endpoint)
+        url = make_url(self.url, endpoint)
+        
         params = {'asset': asset, 'interval': interval, 'model_name': 'model_test'}
         headers = {'accept': 'application/json'}
         auth = self.user_auth
@@ -120,7 +132,8 @@ class tdbotAPI:
         '''
         # Define the URL of the API endpoint
         endpoint = 'get_model_params'
-        url = os.path.join(self.url, endpoint)
+        # url = os.path.join(self.url, endpoint)
+        url = make_url(self.url, endpoint)
 
         # Define the headers
         headers = {
@@ -135,6 +148,8 @@ class tdbotAPI:
         # Make the PUT request
         response = requests.get(url, params=params, headers=headers, auth=auth)
 
+        print("------------------------>>>> url ", url)
+        
         output = {}
         output['status_code'] = response.status_code
 
@@ -151,7 +166,8 @@ class tdbotAPI:
 
         # Define the URL of the API endpoint
         endpoint = 'update_model_params'
-        url = os.path.join(self.url, endpoint)
+        # url = os.path.join(self.url, endpoint)
+        url = make_url(self.url, endpoint)
 
         # Define the headers, params & auth
         headers = {
@@ -169,6 +185,8 @@ class tdbotAPI:
         output = {}
         output['status_code'] = response.status_code
 
+
+
         # Check the response status code
         if response.status_code == 200:
             output['data'] = response.json()
@@ -182,7 +200,8 @@ class tdbotAPI:
 
         # Define the URL of the API endpoint
         endpoint = 'train_model'
-        url = os.path.join(self.url, endpoint)
+        # url = os.path.join(self.url, endpoint)
+        url = make_url(self.url, endpoint)
 
         # Define the headers, params & auth
         headers = {
@@ -262,19 +281,24 @@ def parameters_page():
             st.subheader('For model')
             st.write('Model: KNN Classifier')
             params_m = actual_params['data']['params_model']
-            new_params['model_n_neighbors'] = st.number_input('n_neighbors', value=params_m['n_neighbors'], step=1)
+            new_params['tdbmodel_n_neighbors'] = st.number_input('n_neighbors', value=params_m['n_neighbors'], step=1)
             weights_list = ['uniform','distance']
-            new_params['model_weights'] = st.selectbox('weights', weights_list, index=weights_list.index(params_m['weights']))
+            new_params['tdbmodel_weights'] = st.selectbox('weights', weights_list, index=weights_list.index(params_m['weights']))
 
         with col3:
             st.subheader('For cross-validation')
             params_cv = actual_params['data']['params_cv']
             new_params['cv_n_splits'] = st.number_input('n_splits', value=params_cv['n_splits'], step=1)
-        
+
+        print("#######################", new_params)        
 
         if st.button("Record new parameters"):
             with st.status('Update parameters'):
                 response = tdb.update_parameters(asset_list[asset], interval_list[interval], new_params)
+                
+                print("============>>>>>>>>")
+                print(response)
+                
                 if response['status_code']==200:
                     st.write('Parameters successfully updated')
                 else:
