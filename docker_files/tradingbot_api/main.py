@@ -1,15 +1,17 @@
 from fastapi import FastAPI, Depends, HTTPException, status #, Query, Form
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from typing import Optional
 from pydantic import BaseModel, Field #, validator, ValidationError
 from enum import Enum
 from src.data.make_dataset import getData
 from datetime import datetime, timezone
 import time
-#import json
-#import numpy as np
+import json
+import numpy as np
 from pymongo import MongoClient
 import os
-import requests 
+import requests
+import pandas as pd
 
 
 
@@ -280,6 +282,48 @@ async def check_actual_price_hist(
     return output
 
 
+@api.get('/get_price_hist', name = 'Get the price history between 2 dates',
+                    description = 'Get the price history between 2 dates for a specific asset',
+                    tags = ['Public'])
+async def get_price_hist(
+    asset: Asset,
+    interval: Intervals,
+    date_start: datetime,
+    date_end: datetime):
+    """
+    Return historical data for a given asset
+    """
+    try:
+        client = MongoClient(uri)
+
+        db = client['asset_price_hist']
+
+        # get asset data
+        db_name = f"{asset}-{interval}-raw"
+        collection = db[db_name]
+
+        # Convert start and end dates to milliseconds since epoch
+        start_timestamp = int(date_start.timestamp() * 1000)
+        end_timestamp = int(date_end.timestamp() * 1000)
+
+        # Query MongoDB to filter data between start_date and end_date
+        query = {"openT": {"$gte": start_timestamp, "$lte": end_timestamp}}
+        cursor = collection.find(query)
+
+        df = pd.DataFrame(list(cursor))
+
+        if len(df)>0:
+            df.drop(columns=['_id'], inplace=True)
+
+        output=df.to_json(orient="records")
+        output = json.loads(output)
+
+        return output
+    except Exception as e:
+        # If there's an exception, display the error
+        return {"error": str(e)}
+
+
 def get_existent_models():
     names = []
     with MongoClient(uri) as client:
@@ -334,7 +378,8 @@ async def get_prediction(
                     asset: Asset,
                     interval: Intervals,
                     model_name: str = 'model_test',
-                    username: str = Depends(verify_user)):
+                    username: str = Depends(verify_user)
+                    ):
     """
     Returns confirmation if login protocol is succesfull
     """
@@ -362,6 +407,7 @@ async def get_prediction(
     X_transform = getFeatures(features_params['features_length'], features_params['features_factor'])
     X = X_transform.fit_transform(df.close)
 
+    print(X.iloc[-1:].shape)
     pred = tm.get_prediction(X.iloc[-1:])
     if pred['pred_exist']==False:
         raise HTTPException(status_code=404, detail="No model trained. Use /train_model to train the model.")
@@ -370,7 +416,62 @@ async def get_prediction(
     
     return response
 
+@api.get('/predictions', name = 'Get prediction',
+                         description = 'Get the prediction with the actual data. Return "BUY" or "WAIT".',
+                         tags = ['Users'])
+async def get_predictions(
+                    asset: Asset,
+                    interval: Intervals,
+                    model_name: str = 'model_test',
+                    date_start: Optional[datetime] = None,
+                    date_end: Optional[datetime] = None):
+    """
+    Returns confirmation if login protocol is succesfull
+    """
+    
+    # read the dataset
+    open_csv = openFile(raw_data_path, asset, interval)
+    if open_csv.is_data() == False:
+        raise HTTPException(status_code=404, detail="No data available. Fetch the data first.")
+    df = open_csv.data
 
+    if date_start != None and date_end != None:
+        # if we want the prediction for a time range, we can define a filter
+        # Convert start and end dates to milliseconds since epoch
+        start_timestamp = int(date_start.timestamp() * 1000)
+        end_timestamp = int(date_end.timestamp() * 1000)
+        index_filter = df[(df.openT>=start_timestamp) & (df.openT<=end_timestamp)].index
+    else:
+        index_filter = np.array([df.index[-1]])
+
+    # open a instance of tdbotModel
+    tm = tdbotModel(models_path, model_name, asset, interval)
+
+    # read the params
+    params = tm.get_params()
+    if params==False:
+        raise HTTPException(status_code=404, detail="No parameters available. Use /update_model_params to create the parameters.")
+
+    # once we have the data AND the parameters, we can perform the training
+
+    # preprocessing
+    features_params=params['params_features_eng']
+
+    # get the features
+    X_transform = getFeatures(features_params['features_length'], features_params['features_factor'])
+    X = X_transform.fit_transform(df.close)
+
+    pred = tm.get_predictions(X.loc[index_filter])
+    if pred['pred_exist']==False:
+        raise HTTPException(status_code=404, detail="No model trained. Use /train_model to train the model.")
+    
+    # Let's prepare the response dict
+    response = {}
+    response['pred_exist'] = True
+    response['datetime_index'] = index_filter.tolist() # list of index
+    response['pred'] = pred['prediction'].tolist() # list of prediction: 0 or 1
+    
+    return response
 
 #################################################################################
 ######################## Define Registered Admin Methods ########################
