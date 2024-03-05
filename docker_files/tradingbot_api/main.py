@@ -424,7 +424,8 @@ async def get_predictions(
                     interval: Intervals,
                     model_name: str = 'model_test',
                     date_start: Optional[datetime] = None,
-                    date_end: Optional[datetime] = None):
+                    date_end: Optional[datetime] = None,
+                    username: str = Depends(verify_user)):
     """
     Returns confirmation if login protocol is succesfull
     """
