@@ -147,8 +147,6 @@ class tdbotAPI:
 
         # Make the PUT request
         response = requests.get(url, params=params, headers=headers, auth=auth)
-
-        print("------------------------>>>> url ", url)
         
         output = {}
         output['status_code'] = response.status_code
@@ -290,14 +288,9 @@ def parameters_page():
             params_cv = actual_params['data']['params_cv']
             new_params['cv_n_splits'] = st.number_input('n_splits', value=params_cv['n_splits'], step=1)
 
-        print("#######################", new_params)        
-
         if st.button("Record new parameters"):
             with st.status('Update parameters'):
                 response = tdb.update_parameters(asset_list[asset], interval_list[interval], new_params)
-                
-                print("============>>>>>>>>")
-                print(response)
                 
                 if response['status_code']==200:
                     st.write('Parameters successfully updated')
