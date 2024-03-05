@@ -85,8 +85,8 @@ def verify_user(credentials: HTTPBasicCredentials = Depends(security)):
     username = credentials.username
 
     # Make a request to the userdatabase API to verify the user credentials
-    url = 'http://localhost:8001/verify-user'  # as defined by the deployment& & service
-    # url = 'http://service-tb:8001/verify-user'  # as defined by the deployment& & service
+    # url = 'http://localhost:8001/verify-user'  # as defined by the deployment& & service
+    url = 'http://service-tb:8001/verify-user'  # as defined by the deployment& & service
     
     response = requests.get(url, auth=(username, credentials.password))
     
@@ -104,8 +104,8 @@ def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
     username = credentials.username
 
     # Make a request to the userdatabase API to verify the user credentials
-    url = 'http://localhost:8001/verify-admin'  # as defined by the deployment& & service
-    # url = 'http://service-tb:8001/verify-admin'  # as defined by the deployment& & service
+    # url = 'http://localhost:8001/verify-admin'  # as defined by the deployment& & service
+    url = 'http://service-tb:8001/verify-admin'  # as defined by the deployment& & service
     
     response = requests.get(url, auth=(username, credentials.password))
     
