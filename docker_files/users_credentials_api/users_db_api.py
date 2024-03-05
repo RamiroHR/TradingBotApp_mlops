@@ -191,5 +191,19 @@ async def get_usernames():
         usernames = [user["username"] for user in collection.find()]  # Assuming username is a field in your collection
 
         return usernames
+    
+    
+@server.get("/model_names", tags = ["Extra"])
+async def get_usernames():
+    # Connect to MongoDB
+    with MongoClient(uri) as client:
+        # Access the database and collection
+        db = client.models
+        collection = db.trained_models
+        
+        # Query MongoDB to retrieve all usernames
+        names = [item["model_name"] for item in collection.find()]  # Assuming model_name is a field in your collection
+
+        return names
 
 
