@@ -280,6 +280,15 @@ async def check_actual_price_hist(
     return output
 
 
+def get_existent_models():
+    names = []
+    with MongoClient(uri) as client:
+        db = client.models
+        collection = db.trained_models
+        ## query:
+        names = [item["model_name"] for item in collection.find()]  # Assuming model_name is a field in your collection
+    return names
+
 @api.get('/check_model_exists', name = 'Check if a model exists and has been trained',
                     description = 'Check if model exists in our database for a specific asset and interval',
                     tags = ['Public'])
@@ -290,7 +299,10 @@ async def check_model_exists(
 
     tm = tdbotModel(models_path, model_name, asset, interval)
     if tm.load_model()['model_exist'] == False:
-        raise HTTPException(status_code=404, detail="No model available")
+        names = get_existent_models()
+        raise HTTPException(status_code=404, detail={"False":"This model is not available.",
+                                                     "Available models": names}
+                            )
 
     return True
 

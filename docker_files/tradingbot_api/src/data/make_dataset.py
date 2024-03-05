@@ -171,7 +171,7 @@ class getData:
         with MongoClient(uri) as Mclient:
             db = Mclient.asset_price_hist
             collection = db[coll_name]
-            # collection.drop()
+            collection.drop()
             collection.insert_many(data)
         print('Data updated')
         ## >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
