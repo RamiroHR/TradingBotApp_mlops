@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, status #, Query, Form
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, Field #, validator, ValidationError
 from enum import Enum
 from src.data.make_dataset import getData
@@ -13,6 +13,9 @@ import os
 import requests
 import pandas as pd
 
+from src.models.train_model import tdbotModel
+from src.data.read_dataset import openFile
+from src.features.build_features import getFeatures, getTarget
 
 
 ## instantiate the api and define the tags meatadata & security protocol
@@ -323,6 +326,19 @@ async def get_price_hist(
         # If there's an exception, display the error
         return {"error": str(e)}
 
+@api.post('/get_target', name = 'Get the target',
+                    description = 'Get the target on the basis of the input parameters and a list of prices.',
+                    tags = ['Public'])
+async def get_target(
+    price_list: List[float],
+    target_ema_length: int = 7,
+    target_diff_length: int = 7,
+    target_pct_threshold: float = 0.2 ):
+    
+    y_transform = getTarget(target_ema_length, target_diff_length, target_pct_threshold, True)
+    y, threshold = y_transform.fit_transform(pd.Series(price_list))
+    
+    return y.tolist()
 
 def get_existent_models():
     names = []
@@ -478,9 +494,6 @@ async def get_predictions(
 ######################## Define Registered Admin Methods ########################
 #################################################################################
 
-from src.models.train_model import tdbotModel
-from src.data.read_dataset import openFile
-from src.features.build_features import getFeatures, getTarget
 
 class Params(BaseModel):
     features_length: int = Field(default=7)
