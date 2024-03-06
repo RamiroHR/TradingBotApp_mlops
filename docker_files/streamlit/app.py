@@ -2,6 +2,9 @@ import streamlit as st
 import requests 
 import os
 import platform
+from datetime import datetime, timedelta
+import plotly.graph_objects as go
+import pandas as pd
 
 
 ###--- SIDEBAR SELECTION ---###
@@ -22,6 +25,13 @@ interval_list = {
     'Short term (1h interval)':'1h',
     'Middle term (4h interval)':'4h',
     'Long term (1d interval)':'1d'
+}
+
+# list defining the number of hours per interval
+nb_hours_list = {
+    '1h' : 1,
+    '4h' : 4,
+    '1d' : 24
 }
 
 interval = st.sidebar.selectbox(
@@ -89,6 +99,48 @@ class tdbotAPI:
             output['data'] = response.json()
         
         return output
+    
+    def get_price_hist(self, asset, interval, date_start, date_end):
+        endpoint = 'get_price_hist'
+        url = make_url(self.url, endpoint)
+
+        params = {'asset': asset, 
+                  'interval': interval, 
+                  'date_start': date_start,
+                  'date_end': date_end}
+        headers = {'accept': 'application/json'}
+
+        response = requests.get(url, params=params, headers=headers)
+
+        output = {}
+        output['status_code'] = response.status_code
+
+        if response.status_code == 200:
+            output['data'] = response.json()
+        
+        return output
+    
+    
+    def get_target(self, target_ema_length, target_diff_length, target_pct_threshold, price_list):
+        endpoint = 'get_target'
+        url = make_url(self.url, endpoint)
+
+        params = {'target_ema_length': target_ema_length, 
+                  'target_diff_length': target_diff_length, 
+                  'target_pct_threshold': target_pct_threshold}
+        headers = {'accept': 'application/json'}
+
+        response = requests.post(url, params=params, headers=headers, json=price_list)
+
+        output = {}
+        output['status_code'] = response.status_code
+
+        if response.status_code == 200:
+            output['data'] = response.json()
+        
+        return output
+    
+    
     
     def check_model_exists(self, asset, interval):
         endpoint = 'check_model_exists'
@@ -297,6 +349,48 @@ def parameters_page():
                 else:
                     st.write('Error. Parameters not updated.')
 
+        
+        # get_price_hist / define the input
+        date_finish = datetime.now()
+        nb_points = 2000
+        hours_to_remove = nb_points * nb_hours_list[interval_list[interval]]
+        date_start = date_finish -  timedelta(hours=hours_to_remove)
+
+        # get_price_hist / call the data
+        data_hist = tdb.get_price_hist(asset_list[asset], interval_list[interval], date_start, date_finish)
+
+        if data_hist['status_code']==200:
+            # if code is 200, we display the data
+
+            # convert data in dataframe
+            df = pd.DataFrame(data_hist['data'])
+            df.sort_values(by='openT', inplace=True)
+            df['datetime']=pd.to_datetime(df["openT"], utc=True, unit="ms")
+
+            # get the target for this price list
+            price_list= df.close.tolist()
+            targets = tdb.get_target(new_params['target_ema_length'], new_params['target_diff_length'], new_params['target_pct_threshold'], price_list)
+            df['target'] = targets['data']
+            
+            # display the data
+            fig = go.Figure()
+
+            # Add line plot of the price
+            fig.add_trace(go.Scatter(x=df['datetime'], y=df['close'], mode='lines', name='Price history'))
+
+            # filter on target==1
+            df_temp = df[df['target']==1]
+            fig.add_trace(go.Scatter(x=df_temp['datetime'], y=df_temp['close'], mode='markers', name='BUY signal'))
+
+            # Update layout
+            fig.update_layout(title='Visualization of the buying signals that are targeted',
+                            xaxis_title='X',
+                            yaxis_title='Y')
+
+            # Display figure
+            st.plotly_chart(fig, use_container_width=True)
+
+
 def training_page():
     st.write('Once your parameters are recorded. You can train the model for a given asset and horizon of time.')
 
@@ -326,8 +420,12 @@ def training_page():
                     st.write(f'Error {response["status_code"]}.')
         
             if response['status_code']==200:
+                # if the model is well training, display the metrics
+                # accuracy
                 acc = round(response['data']['accuracy'],2)
                 st.metric('Accuracy', value=acc)
+
+                # entry score
                 esc = round(response['data']['entry_score']*100,2)
                 st.metric('Entry score', value=esc)
 
