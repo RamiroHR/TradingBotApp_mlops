@@ -206,8 +206,7 @@ async def post_new_user(user: User):
             raise HTTPException(status_code=500, detail="Failed to add user")
      
 
-##========================== price_hist ==========================###
-
+##================================== check actual price hist =====================================###
 # Predefined 'assets' present in the database.
 allowed_assets = ['BTCUSDT', 'ETHUSDT']
 Asset = Enum('Assets', {item: item for item in allowed_assets}, type = str)
@@ -215,6 +214,43 @@ Asset = Enum('Assets', {item: item for item in allowed_assets}, type = str)
 # Predefined 'intervals' present in the database.
 allowed_interval = ['1h', '4h', '1d']
 Intervals = Enum('Assets', {item: item for item in allowed_interval}, type = str)
+
+
+@api.get('/check_actual_price_hist', name = 'check if price exists for an asset',
+                    description = 'Check if price exists in our database for a specific asset',
+                    tags = ['Public'])
+async def check_actual_price_hist(
+    asset: Asset,
+    interval: Intervals):
+
+    open_csv = openFile(raw_data_path, asset, interval)
+    if open_csv.is_data() == False:
+        raise HTTPException(status_code=404, detail="No data available")
+    else:
+        data = open_csv.data
+
+        # get the first date of the dataset
+        first_date = data.iloc[0].openT
+        first_date = datetime.fromtimestamp(first_date/1000)
+        first_date = first_date.strftime("%d/%m/%Y %H:%M:%S")
+
+        # get the last date of the dataset
+        last_date = data.iloc[-1].closeT
+        last_date = datetime.fromtimestamp(last_date/1000) 
+        last_date = last_date.strftime("%d/%m/%Y %H:%M:%S")
+
+        output = {
+                    'asset': asset, 
+                    'interval': interval, 
+                    'first_open_date': first_date, 
+                    'last_close_date': last_date
+                }
+    
+    return output
+
+
+##========================== update_price_hist ==========================###
+
 
 @api.put('/update_price_hist', name = 'Fetch Asset Price History',
                     description = 'Fetch asset specific data over a selected period of time and record it.',
@@ -252,39 +288,10 @@ async def update_price_hist(
             'last_close_date': last_date}
     
 
-@api.get('/check_actual_price_hist', name = 'check if price exists for an asset',
-                    description = 'Check if price exists in our database for a specific asset',
-                    tags = ['Public'])
-async def check_actual_price_hist(
-    asset: Asset,
-    interval: Intervals):
-
-    open_csv = openFile(raw_data_path, asset, interval)
-    if open_csv.is_data() == False:
-        raise HTTPException(status_code=404, detail="No data available")
-    else:
-        data = open_csv.data
-
-        # get the first date of the dataset
-        first_date = data.iloc[0].openT
-        first_date = datetime.fromtimestamp(first_date/1000)
-        first_date = first_date.strftime("%d/%m/%Y %H:%M:%S")
-
-        # get the last date of the dataset
-        last_date = data.iloc[-1].closeT
-        last_date = datetime.fromtimestamp(last_date/1000) 
-        last_date = last_date.strftime("%d/%m/%Y %H:%M:%S")
-
-        output = {
-                    'asset': asset, 
-                    'interval': interval, 
-                    'first_open_date': first_date, 
-                    'last_close_date': last_date
-                }
-    
-    return output
 
 
+
+##========================== get_price_hist ==========================###
 @api.get('/get_price_hist', name = 'Get the price history between 2 dates',
                     description = 'Get the price history between 2 dates for a specific asset',
                     tags = ['Public'])
@@ -326,6 +333,10 @@ async def get_price_hist(
         # If there's an exception, display the error
         return {"error": str(e)}
 
+
+
+
+##=============================== get targets (for plotting) ===============================###
 @api.post('/get_target', name = 'Get the target',
                     description = 'Get the target on the basis of the input parameters and a list of prices.',
                     tags = ['Public'])
@@ -349,6 +360,8 @@ def get_existent_models():
         names = [item["model_name"] for item in collection.find()]  # Assuming model_name is a field in your collection
     return names
 
+
+##================================== check if model exists in DB ==================================###
 @api.get('/check_model_exists', name = 'Check if a model exists and has been trained',
                     description = 'Check if model exists in our database for a specific asset and interval',
                     tags = ['Public'])
@@ -386,8 +399,8 @@ async def verify_user_route(username: str = Depends(verify_user)):
     return response
 
 
-##========================== Get model predictions ==========================###
-@api.get('/prediction', name = 'Get prediction',
+#========================== Get model prediction (singular) ==========================###
+@api.get('/prediction', name = 'Get final prediction',
                          description = 'Get the prediction with the actual data. Return "BUY" or "WAIT".',
                          tags = ['Users'])
 async def get_prediction(
@@ -432,7 +445,9 @@ async def get_prediction(
     
     return response
 
-@api.get('/predictions', name = 'Get prediction',
+
+##========================== Get predictionS (plural!) ==========================###
+@api.get('/predictions', name = 'Get predictions (during training)',
                          description = 'Get the prediction with the actual data. Return "BUY" or "WAIT".',
                          tags = ['Users'])
 async def get_predictions(
