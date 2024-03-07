@@ -359,11 +359,12 @@ def parameters_page():
         # get_price_hist / call the data
         data_hist = tdb.get_price_hist(asset_list[asset], interval_list[interval], date_start, date_finish)
 
-        if data_hist['status_code']==200:
+        if data_hist['status_code']==200 and len(data_hist['data'])>0:
             # if code is 200, we display the data
 
             # convert data in dataframe
             df = pd.DataFrame(data_hist['data'])
+
             df.sort_values(by='openT', inplace=True)
             df['datetime']=pd.to_datetime(df["openT"], utc=True, unit="ms")
 
@@ -389,6 +390,9 @@ def parameters_page():
 
             # Display figure
             st.plotly_chart(fig, use_container_width=True)
+        
+        else:
+            st.markdown('<p style="color:red;">Asset data not could not be found.</p>', unsafe_allow_html=True)
 
 
 def training_page():

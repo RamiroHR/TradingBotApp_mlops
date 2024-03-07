@@ -141,69 +141,69 @@ async def verify_admin_endpoint(credentials: HTTPBasicCredentials = Depends(veri
 #####################  Extra services  ######################
 
 
-## simple query: get all users
-def get_all_users():
-    with MongoClient(uri) as client:
-        db = client.api_login_credentials
-        collection = db.users
-        cursor = collection.find()
-        # Convert ObjectId to string for each document
-        users = [{**user, "_id": str(user["_id"])} for user in cursor]
-        return users
+# ## simple query: get all users
+# def get_all_users():
+#     with MongoClient(uri) as client:
+#         db = client.api_login_credentials
+#         collection = db.users
+#         cursor = collection.find()
+#         # Convert ObjectId to string for each document
+#         users = [{**user, "_id": str(user["_id"])} for user in cursor]
+#         return users
     
-# Endpoint to retrieve all users
-@server.get("/users", tags = ["Extra"])
-async def retrieve_users():
-    users = get_all_users()
-    return users
+# # Endpoint to retrieve all users
+# @server.get("/users", tags = ["Extra"])
+# async def retrieve_users():
+#     users = get_all_users()
+#     return users
 
 
-# Parametrized query: get a particular user
-@server.get("/users/{username}", tags = ["Extra"])
-async def get_user_by_username(username: str):
-    # Connect to MongoDB
-    with MongoClient(uri) as client:
-        # Access the database and collection
-        db = client.api_login_credentials
-        collection = db.users
+# # Parametrized query: get a particular user
+# @server.get("/users/{username}", tags = ["Extra"])
+# async def get_user_by_username(username: str):
+#     # Connect to MongoDB
+#     with MongoClient(uri) as client:
+#         # Access the database and collection
+#         db = client.api_login_credentials
+#         collection = db.users
         
-        # Query MongoDB to find the user by username
-        user = collection.find_one({"username": username})
+#         # Query MongoDB to find the user by username
+#         user = collection.find_one({"username": username})
 
-        # If user not found, raise HTTPException with status code 404
-        if user is None:
-            raise HTTPException(status_code=404, detail="User not found")
+#         # If user not found, raise HTTPException with status code 404
+#         if user is None:
+#             raise HTTPException(status_code=404, detail="User not found")
 
-        # Convert ObjectId to string if necessary
-        user["_id"] = str(user["_id"])
+#         # Convert ObjectId to string if necessary
+#         user["_id"] = str(user["_id"])
 
-        return user
+#         return user
     
-@server.get("/usernames", tags = ["Extra"])
-async def get_usernames():
-    # Connect to MongoDB
-    with MongoClient(uri) as client:
-        # Access the database and collection
-        db = client.api_login_credentials
-        collection = db.users
+# @server.get("/usernames", tags = ["Extra"])
+# async def get_usernames():
+#     # Connect to MongoDB
+#     with MongoClient(uri) as client:
+#         # Access the database and collection
+#         db = client.api_login_credentials
+#         collection = db.users
         
-        # Query MongoDB to retrieve all usernames
-        usernames = [user["username"] for user in collection.find()]  # Assuming username is a field in your collection
+#         # Query MongoDB to retrieve all usernames
+#         usernames = [user["username"] for user in collection.find()]  # Assuming username is a field in your collection
 
-        return usernames
+#         return usernames
     
     
-@server.get("/model_names", tags = ["Extra"])
-async def get_usernames():
-    # Connect to MongoDB
-    with MongoClient(uri) as client:
-        # Access the database and collection
-        db = client.models
-        collection = db.trained_models
+# @server.get("/model_names", tags = ["Extra"])
+# async def get_usernames():
+#     # Connect to MongoDB
+#     with MongoClient(uri) as client:
+#         # Access the database and collection
+#         db = client.models
+#         collection = db.trained_models
         
-        # Query MongoDB to retrieve all usernames
-        names = [item["model_name"] for item in collection.find()]  # Assuming model_name is a field in your collection
+#         # Query MongoDB to retrieve all usernames
+#         names = [item["model_name"] for item in collection.find()]  # Assuming model_name is a field in your collection
 
-        return names
+#         return names
 
 

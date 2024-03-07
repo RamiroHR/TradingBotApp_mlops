@@ -4,7 +4,7 @@ FROM python:3.9-slim
 WORKDIR /app  
 
 # ADD ./docker_files/streamlit/app.py ./docker_files/streamlit/requirements.txt ./
-ADD ./streamlit/app.py ./docker_files/streamlit/requirements.txt ./
+ADD ./docker_files/streamlit/app.py ./docker_files/streamlit/requirements.txt ./
 
 #RUN pip install --no-cache-dir -r requirements.txt
 RUN pip3 install -r requirements.txt

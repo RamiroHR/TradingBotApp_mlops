@@ -19,7 +19,7 @@ spec:
 
         ## credentials microservice api container:
         - name: cont-credentials-api
-          image:  ramirohr/credentials_api:1.0.4
+          image:  ramirohr/credentials_api:1.0.5
           ports:
           - containerPort: 7000   # fastapi image exposed port
 
@@ -34,7 +34,7 @@ spec:
 
         ## Router api container:
         - name: cont-router-api
-          image: ramirohr/tradingbot:1.1.0
+          image: ramirohr/tradingbot:1.1.1
           ports:
             - containerPort: 8000
 
@@ -49,7 +49,7 @@ spec:
 
         ## user interface streamlit container:
         - name: cont-streamlit-ui
-          image:  ramirohr/streamlit_ui:1.0.0
+          image:  ramirohr/streamlit_ui:1.0.1
           ports:
           - containerPort: 8501   # Docker image exposed port
 
